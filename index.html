@@ -13,6 +13,7 @@
 
 <script type="text/babel">
 const { useState, useEffect, useReducer, useCallback } = React;
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyYmC0bR9MJkZJdHvVMOTOou6gPgBUyI7JejCbgaJ_t6Jeb_rc0pH_6ft8Sc9zzSEX--g/exec";
 
 
 
@@ -99,27 +100,7 @@ const TYPE_CONFIG = {
 };
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
-const initState = () => {
-  try {
-    const tasks = JSON.parse(localStorage.getItem("tt_tasks"));
-    const members = JSON.parse(localStorage.getItem("tt_members"));
-    const settings = JSON.parse(localStorage.getItem("tt_settings"));
-    const firstRun = localStorage.getItem("tt_init");
-    if (!firstRun) {
-      localStorage.setItem("tt_tasks", JSON.stringify(MOCK_TASKS));
-      localStorage.setItem("tt_members", JSON.stringify(MOCK_MEMBERS));
-      localStorage.setItem("tt_init", "1");
-      return { tasks: MOCK_TASKS, members: MOCK_MEMBERS, settings: settings || {} };
-    }
-    return {
-      tasks: tasks || [],
-      members: members || MOCK_MEMBERS,
-      settings: settings || {},
-    };
-  } catch {
-    return { tasks: [], members: MOCK_MEMBERS, settings: {} };
-  }
-};
+const initState = () => ({tasks: [], members: [], settings:{connected:true,autoSync:true}});
 
 function reducer(state, action) {
   let next;
@@ -141,9 +122,6 @@ function reducer(state, action) {
       break;
     case "DELETE_MEMBER":
       next = { ...state, members: state.members.filter((m) => m.id !== action.payload) };
-      break;
-    case "LOAD_TASKS":
-      next = { ...state, tasks: action.payload };
       break;
     case "UPDATE_SETTINGS":
       next = { ...state, settings: { ...state.settings, ...action.payload } };
@@ -811,39 +789,7 @@ function App() {
 
   const closeModal = () => setModal(null);
 
-  const loadTasks = async () => {
-    try {
-      const url = state.settings?.appsScriptUrl;
-      if (!url) return;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        dispatch({ type: "LOAD_TASKS", payload: data });
-      }
-    } catch(e){ console.error(e); }
-  };
-
-  useEffect(() => { loadTasks(); }, [state.settings?.appsScriptUrl]);
-
-  useEffect(() => {
-    if (!state.settings?.autoSync) return;
-    const t = setInterval(loadTasks, 10000);
-    return () => clearInterval(t);
-  }, [state.settings?.autoSync, state.settings?.appsScriptUrl]);
-
-
-  const handleSaveTask = async (task) => {
-    const url = state.settings?.appsScriptUrl;
-    if (url) {
-      try {
-        await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "addTask", ...task })
-        });
-        await loadTasks();
-      } catch(e){ console.error(e); }
-    }
+  const handleSaveTask = (task) => {
     if (task.id && state.tasks.find((t) => t.id === task.id)) {
       dispatch({ type: "UPDATE_TASK", payload: task });
     } else {
