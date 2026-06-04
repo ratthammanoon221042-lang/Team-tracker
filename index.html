@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Tracker</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useReducer, useCallback } = React;
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyYmC0bR9MJkZJdHvVMOTOou6gPgBUyI7JejCbgaJ_t6Jeb_rc0pH_6ft8Sc9zzSEX--g/exec";
+
+
+
+// ─── Fonts ────────────────────────────────────────────────────────────────────
+const fontStyle = `
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Playfair+Display:wght@400;500&display=swap');
+`;
+
+// ─── UUID helper ─────────────────────────────────────────────────────────────
+const uuid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+const today = () => new Date().toISOString().split("T")[0];
+const addDays = (d, n) => {
+  const dt = new Date(d);
+  dt.setDate(dt.getDate() + n);
+  return dt.toISOString().split("T")[0];
+};
+const diffDays = (due) => {
+  const d = new Date(due);
+  d.setHours(0, 0, 0, 0);
+  const t = new Date();
+  t.setHours(0, 0, 0, 0);
+  return Math.ceil((d - t) / 86400000);
+};
+const fmtDate = (d) =>
+  d
+    ? new Date(d).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" })
+    : "—";
+const thisWeekStart = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - d.getDay());
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+// ─── Mock Data ────────────────────────────────────────────────────────────────
+const MOCK_MEMBERS = [
+  { id: "m1", name: "นภัสสร วงศ์ทอง", position: "Project Manager", color: "#b87ab0", initials: "นว" },
+  { id: "m2", name: "พิชญา สุขสวัสดิ์", position: "UI/UX Designer", color: "#5a9cc5", initials: "พส" },
+  { id: "m3", name: "อริสา มีสุข", position: "Frontend Developer", color: "#5aa572", initials: "อม" },
+  { id: "m4", name: "ธัญวรัตน์ ชัยดี", position: "Backend Developer", color: "#d4874a", initials: "ธช" },
+  { id: "m5", name: "กมลชนก เพชรรัตน์", position: "QA Engineer", color: "#c5606e", initials: "กพ" },
+  { id: "m6", name: "สิริมา ทองดี", position: "Content Creator", color: "#8870cc", initials: "สท" },
+];
+
+const t = today();
+const MOCK_TASKS = [
+  { id: "t1", title: "ออกแบบหน้า Landing Page ใหม่", type: "project", assignees: ["m2", "m3"], status: "in_progress", priority: "high", startDate: addDays(t, -5), dueDate: addDays(t, 2), description: "ออกแบบและพัฒนาหน้า Landing Page ให้สอดคล้องกับ brand identity ใหม่", note: "", tags: ["design", "frontend"], createdAt: t, updatedAt: t },
+  { id: "t2", title: "เขียน Unit Test สำหรับ API", type: "task", assignees: ["m4"], status: "not_started", priority: "medium", startDate: t, dueDate: addDays(t, 7), description: "", note: "ใช้ Jest + Supertest", tags: ["backend", "testing"], createdAt: t, updatedAt: t },
+  { id: "t3", title: "ประชุม Sprint Review ครั้งที่ 3", type: "meeting", assignees: ["m1", "m2", "m3", "m4", "m5"], status: "done", priority: "medium", startDate: addDays(t, -3), dueDate: addDays(t, -3), description: "รีวิว sprint และวางแผน sprint ถัดไป", note: "", tags: ["meeting"], createdAt: t, updatedAt: t },
+  { id: "t4", title: "แก้ Bug หน้า Login", type: "task", assignees: ["m3"], status: "blocked", priority: "high", startDate: addDays(t, -2), dueDate: addDays(t, -1), description: "Bug: ไม่สามารถ login ด้วย email บาง domain ได้", note: "รอ backend fix API", tags: ["bug", "frontend"], createdAt: t, updatedAt: t },
+  { id: "t5", title: "เขียน Blog Content เดือนนี้", type: "task", assignees: ["m6"], status: "in_progress", priority: "low", startDate: addDays(t, -1), dueDate: addDays(t, 5), description: "", note: "", tags: ["content"], createdAt: t, updatedAt: t },
+  { id: "t6", title: "Migrate Database ไป PostgreSQL", type: "project", assignees: ["m4"], status: "review", priority: "high", startDate: addDays(t, -7), dueDate: addDays(t, 1), description: "ย้าย database จาก MySQL ไป PostgreSQL", note: "", tags: ["backend", "database"], createdAt: t, updatedAt: t },
+  { id: "t7", title: "สร้าง Component Library", type: "project", assignees: ["m2", "m3"], status: "in_progress", priority: "medium", startDate: addDays(t, -3), dueDate: addDays(t, 14), description: "สร้าง shared component library สำหรับทีม", note: "", tags: ["design", "frontend"], createdAt: t, updatedAt: t },
+  { id: "t8", title: "QA Testing หน้า Dashboard", type: "task", assignees: ["m5"], status: "done", priority: "medium", startDate: addDays(t, -5), dueDate: addDays(t, -2), description: "", note: "ผ่านทุก test case", tags: ["qa"], createdAt: t, updatedAt: t },
+  { id: "t9", title: "อัปเดต Privacy Policy", type: "task", assignees: ["m1", "m6"], status: "not_started", priority: "low", startDate: t, dueDate: addDays(t, 10), description: "", note: "", tags: ["legal", "content"], createdAt: t, updatedAt: t },
+  { id: "t10", title: "Setup CI/CD Pipeline", type: "project", assignees: ["m4"], status: "review", priority: "high", startDate: addDays(t, -10), dueDate: addDays(t, -4), description: "ตั้งค่า GitHub Actions สำหรับ auto deploy", note: "", tags: ["devops"], createdAt: t, updatedAt: t },
+  { id: "t11", title: "Usability Testing กับ User จริง", type: "task", assignees: ["m2", "m5"], status: "not_started", priority: "medium", startDate: addDays(t, 3), dueDate: addDays(t, 8), description: "", note: "", tags: ["ux", "testing"], createdAt: t, updatedAt: t },
+  { id: "t12", title: "Optimize SEO หน้าหลัก", type: "task", assignees: ["m3", "m6"], status: "done", priority: "low", startDate: addDays(t, -8), dueDate: addDays(t, -3), description: "", note: "", tags: ["seo", "content"], createdAt: t, updatedAt: t },
+  { id: "t13", title: "สัมภาษณ์ UX Research", type: "meeting", assignees: ["m1", "m2"], status: "in_progress", priority: "medium", startDate: t, dueDate: addDays(t, 2), description: "สัมภาษณ์ผู้ใช้ 5 คน เพื่อเก็บ feedback", note: "", tags: ["research", "ux"], createdAt: t, updatedAt: t },
+];
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const STATUS_CONFIG = {
+  not_started: { label: "ยังไม่เริ่ม", color: "#8b7fa0", bg: "#e2ddd8", dot: "#8b7fa0" },
+  in_progress: { label: "กำลังดำเนินการ", color: "#4e78a0", bg: "#deeaf8", dot: "#4e78a0" },
+  review: { label: "รอตรวจสอบ", color: "#b07d2e", bg: "#fdefc5", dot: "#b07d2e" },
+  blocked: { label: "ติดปัญหา", color: "#b04060", bg: "#fcd9e2", dot: "#b04060" },
+  done: { label: "เสร็จแล้ว", color: "#3d8a56", bg: "#d4f0df", dot: "#3d8a56" },
+};
+
+const PRIORITY_CONFIG = {
+  high: { label: "High", color: "#b04060", bg: "#fcd9e2" },
+  medium: { label: "Medium", color: "#b07d2e", bg: "#fdefc5" },
+  low: { label: "Low", color: "#8b7fa0", bg: "#e2ddd8" },
+};
+
+const TYPE_CONFIG = {
+  project: { label: "Project", color: "#6e52b0", bg: "#e6deff" },
+  task: { label: "Task", color: "#3d8a56", bg: "#d4f0df" },
+  meeting: { label: "ประชุม", color: "#4e78a0", bg: "#deeaf8" },
+  other: { label: "อื่นๆ", color: "#8b7fa0", bg: "#e2ddd8" },
+};
+
+// ─── Reducer ──────────────────────────────────────────────────────────────────
+const initState = () => ({tasks: [], members: [], settings:{connected:true,autoSync:true}});
+
+function reducer(state, action) {
+  let next;
+  switch (action.type) {
+    case "ADD_TASK":
+      next = { ...state, tasks: [...state.tasks, action.payload] };
+      break;
+    case "UPDATE_TASK":
+      next = { ...state, tasks: state.tasks.map((t) => (t.id === action.payload.id ? action.payload : t)) };
+      break;
+    case "DELETE_TASK":
+      next = { ...state, tasks: state.tasks.filter((t) => t.id !== action.payload) };
+      break;
+    case "ADD_MEMBER":
+      next = { ...state, members: [...state.members, action.payload] };
+      break;
+    case "UPDATE_MEMBER":
+      next = { ...state, members: state.members.map((m) => (m.id === action.payload.id ? action.payload : m)) };
+      break;
+    case "DELETE_MEMBER":
+      next = { ...state, members: state.members.filter((m) => m.id !== action.payload) };
+      break;
+    case "UPDATE_SETTINGS":
+      next = { ...state, settings: { ...state.settings, ...action.payload } };
+      break;
+    default:
+      return state;
+  }
+  localStorage.setItem("tt_tasks", JSON.stringify(next.tasks));
+  localStorage.setItem("tt_members", JSON.stringify(next.members));
+  localStorage.setItem("tt_settings", JSON.stringify(next.settings));
+  return next;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const getMember = (members, id) => members.find((m) => m.id === id);
+const isNearDue = (due) => { const d = diffDays(due); return d >= 0 && d <= 3; };
+const isOverdue = (due, status) => status !== "done" && diffDays(due) < 0;
+
+// ─── Micro components ─────────────────────────────────────────────────────────
+const Badge = ({ label, color, bg, size = 12 }) => (
+  <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 20, background: bg, color, fontSize: size, fontWeight: 500, letterSpacing: 0.2 }}>{label}</span>
+);
+
+const Avatar = ({ member, size = 28, showName = false }) => (
+  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+    <span style={{ width: size, height: size, borderRadius: "50%", background: member?.color || "#d4cce0", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.36, fontWeight: 600, flexShrink: 0, textShadow: "0 1px 2px rgba(0,0,0,0.15)" }}>{member?.initials || "?"}</span>
+    {showName && <span style={{ fontSize: 13, color: "#5c4f6b" }}>{member?.name}</span>}
+  </span>
+);
+
+const DueBadge = ({ due, status }) => {
+  const over = isOverdue(due, status);
+  const near = isNearDue(due);
+  const d = diffDays(due);
+  if (status === "done") return null;
+  if (over) return <span style={{ fontSize: 11, color: "#b04060", background: "#fcd9e2", padding: "1px 7px", borderRadius: 20 }}>เกิน {Math.abs(d)} วัน</span>;
+  if (near) return <span style={{ fontSize: 11, color: "#b07d2e", background: "#fdefc5", padding: "1px 7px", borderRadius: 20 }}>อีก {d} วัน</span>;
+  return <span style={{ fontSize: 11, color: "#8b7fa0" }}>{fmtDate(due)}</span>;
+};
+
+const Toast = ({ toasts }) => (
+  <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, display: "flex", flexDirection: "column", gap: 8 }}>
+    {toasts.map((t) => (
+      <div key={t.id} style={{ background: t.type === "error" ? "#b04060" : "#3d8a56", color: "#fff", padding: "10px 18px", borderRadius: 12, fontSize: 13, fontFamily: "DM Sans, sans-serif", boxShadow: "0 4px 20px rgba(0,0,0,0.12)", animation: "slideIn .25s ease" }}>
+        {t.msg}
+      </div>
+    ))}
+  </div>
+);
+
+// ─── Task Form ────────────────────────────────────────────────────────────────
+const emptyTask = () => ({
+  id: "", title: "", type: "task", assignees: [], status: "not_started", priority: "medium",
+  startDate: today(), dueDate: addDays(today(), 7), description: "", note: "", tags: [],
+  createdAt: today(), updatedAt: today(),
+});
+
+function TaskForm({ task, members, onSave, onCancel, settings, showToast }) {
+  const [form, setForm] = useState(task ? { ...task } : emptyTask());
+  const [errors, setErrors] = useState({});
+  const [tagInput, setTagInput] = useState("");
+  const [syncing, setSyncing] = useState(false);
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const validate = () => {
+    const e = {};
+    if (!form.title.trim()) e.title = "กรุณากรอกชื่องาน";
+    if (!form.dueDate) e.dueDate = "กรุณาเลือกวันครบกำหนด";
+    if (form.assignees.length === 0) e.assignees = "กรุณาเลือกผู้รับผิดชอบ";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const save = async (withGoogle = false) => {
+    if (!validate()) return;
+    const saved = { ...form, id: form.id || uuid(), updatedAt: today(), createdAt: form.createdAt || today() };
+    onSave(saved);
+    showToast("บันทึกงานเรียบร้อย ✓", "success");
+    if (withGoogle) {
+      const url = settings?.appsScriptUrl;
+      if (!url) { showToast("กรุณาตั้งค่า Apps Script URL ก่อน", "error"); return; }
+      setSyncing(true);
+      try {
+        await fetch(url, { method: "POST", body: JSON.stringify({ action: "addTask", ...saved }) });
+        showToast("ส่งข้อมูลไป Google สำเร็จ ✓", "success");
+      } catch { showToast("เกิดข้อผิดพลาดในการส่ง Google", "error"); }
+      setSyncing(false);
+    }
+  };
+
+  const addTag = () => {
+    const t = tagInput.trim().toLowerCase();
+    if (t && !form.tags.includes(t)) set("tags", [...form.tags, t]);
+    setTagInput("");
+  };
+
+  const inp = { width: "100%", padding: "8px 12px", borderRadius: 10, border: "1px solid #d4cce0", fontSize: 13, fontFamily: "DM Sans, sans-serif", outline: "none", background: "#f7f3f0", boxSizing: "border-box" };
+  const sel = { ...inp };
+  const lbl = { display: "block", fontSize: 12, color: "#8b7fa0", marginBottom: 4, fontWeight: 500, letterSpacing: 0.3 };
+  const err = { fontSize: 11, color: "#b04060", marginTop: 2 };
+  const row = { marginBottom: 14 };
+  const grid2 = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 };
+
+  return (
+    <div style={{ fontFamily: "DM Sans, sans-serif" }}>
+      <div style={row}>
+        <label style={lbl}>ชื่องาน *</label>
+        <input style={{ ...inp, borderColor: errors.title ? "#b04060" : "#d4cce0" }} value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="กรอกชื่องาน..." />
+        {errors.title && <div style={err}>{errors.title}</div>}
+      </div>
+      <div style={grid2}>
+        <div style={row}>
+          <label style={lbl}>ประเภทงาน *</label>
+          <select style={sel} value={form.type} onChange={(e) => set("type", e.target.value)}>
+            {Object.entries(TYPE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </select>
+        </div>
+        <div style={row}>
+          <label style={lbl}>สถานะ *</label>
+          <select style={sel} value={form.status} onChange={(e) => set("status", e.target.value)}>
+            {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </select>
+        </div>
+      </div>
+      <div style={row}>
+        <label style={lbl}>ผู้รับผิดชอบ * {errors.assignees && <span style={{ color: "#b04060" }}>— {errors.assignees}</span>}</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {members.map((m) => {
+            const sel2 = form.assignees.includes(m.id);
+            return (
+              <button key={m.id} onClick={() => set("assignees", sel2 ? form.assignees.filter((x) => x !== m.id) : [...form.assignees, m.id])}
+                style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 20, border: sel2 ? `1.5px solid ${m.color}` : "1.5px solid #d4cce0", background: sel2 ? m.color + "22" : "#fff", cursor: "pointer", fontSize: 12, fontFamily: "DM Sans, sans-serif" }}>
+                <Avatar member={m} size={20} /> {m.name.split(" ")[0]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div style={row}>
+        <label style={lbl}>Priority *</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          {Object.entries(PRIORITY_CONFIG).map(([k, v]) => (
+            <label key={k} style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 13 }}>
+              <input type="radio" name="priority" value={k} checked={form.priority === k} onChange={() => set("priority", k)} style={{ accentColor: v.color }} />
+              <Badge label={v.label} color={v.color} bg={v.bg} />
+            </label>
+          ))}
+        </div>
+      </div>
+      <div style={grid2}>
+        <div style={row}>
+          <label style={lbl}>วันที่เริ่ม</label>
+          <input type="date" style={inp} value={form.startDate} onChange={(e) => set("startDate", e.target.value)} />
+        </div>
+        <div style={row}>
+          <label style={lbl}>วันครบกำหนด *</label>
+          <input type="date" style={{ ...inp, borderColor: errors.dueDate ? "#b04060" : "#d4cce0" }} value={form.dueDate} onChange={(e) => set("dueDate", e.target.value)} />
+          {errors.dueDate && <div style={err}>{errors.dueDate}</div>}
+        </div>
+      </div>
+      <div style={row}>
+        <label style={lbl}>รายละเอียด</label>
+        <textarea style={{ ...inp, minHeight: 72, resize: "vertical" }} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="รายละเอียดงาน..." />
+      </div>
+      <div style={row}>
+        <label style={lbl}>หมายเหตุ</label>
+        <textarea style={{ ...inp, minHeight: 48, resize: "vertical" }} value={form.note} onChange={(e) => set("note", e.target.value)} placeholder="หมายเหตุ..." />
+      </div>
+      <div style={row}>
+        <label style={lbl}>แท็ก</label>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+          {form.tags.map((tag) => (
+            <span key={tag} style={{ background: "#e6deff", color: "#6e52b0", fontSize: 11, padding: "2px 8px", borderRadius: 20, display: "flex", alignItems: "center", gap: 4 }}>
+              #{tag}
+              <button onClick={() => set("tags", form.tags.filter((x) => x !== tag))} style={{ background: "none", border: "none", cursor: "pointer", color: "#6e52b0", padding: 0, fontSize: 11, lineHeight: 1 }}>×</button>
+            </span>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <input style={{ ...inp, flex: 1 }} value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())} placeholder="พิมพ์แท็ก แล้วกด Enter" />
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20, paddingTop: 16, borderTop: "1px solid #e2ddd8" }}>
+        <button onClick={onCancel} style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid #d4cce0", background: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans, sans-serif", color: "#5c4f6b" }}>ยกเลิก</button>
+        <button onClick={() => save(true)} disabled={syncing} style={{ padding: "8px 18px", borderRadius: 10, border: "none", background: "#6e52b0", color: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans, sans-serif", opacity: syncing ? 0.7 : 1 }}>
+          {syncing ? "กำลังส่ง..." : "บันทึก + ส่ง Google"}
+        </button>
+        <button onClick={() => save(false)} style={{ padding: "8px 20px", borderRadius: 10, border: "none", background: "#3d8a56", color: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans, sans-serif", fontWeight: 500 }}>บันทึก</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Member Form ─────────────────────────────────────────────────────────────
+const PALETTE = ["#b87ab0", "#5a9cc5", "#5aa572", "#d4874a", "#c5606e", "#8870cc", "#3da88a", "#d4a040"];
+function MemberForm({ member, onSave, onCancel }) {
+  const [form, setForm] = useState(member || { id: "", name: "", position: "", color: PALETTE[Math.floor(Math.random() * PALETTE.length)], initials: "" });
+  const [errors, setErrors] = useState({});
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const autoInitials = (name) => {
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) return parts[0][0] + parts[1][0];
+    return name.slice(0, 2);
+  };
+
+  const validate = () => {
+    const e = {};
+    if (!form.name.trim()) e.name = "กรุณากรอกชื่อ";
+    if (!form.position.trim()) e.position = "กรุณากรอกตำแหน่ง";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const save = () => {
+    if (!validate()) return;
+    onSave({ ...form, id: form.id || uuid(), initials: form.initials || autoInitials(form.name) });
+  };
+
+  const inp = { width: "100%", padding: "8px 12px", borderRadius: 10, border: "1px solid #d4cce0", fontSize: 13, fontFamily: "DM Sans, sans-serif", outline: "none", background: "#f7f3f0", boxSizing: "border-box" };
+  const lbl = { display: "block", fontSize: 12, color: "#8b7fa0", marginBottom: 4, fontWeight: 500, letterSpacing: 0.3 };
+  const err = { fontSize: 11, color: "#b04060", marginTop: 2 };
+
+  return (
+    <div style={{ fontFamily: "DM Sans, sans-serif" }}>
+      <div style={{ marginBottom: 14 }}>
+        <label style={lbl}>ชื่อ-นามสกุล *</label>
+        <input style={{ ...inp, borderColor: errors.name ? "#b04060" : "#d4cce0" }} value={form.name} onChange={(e) => { set("name", e.target.value); set("initials", autoInitials(e.target.value)); }} placeholder="ชื่อ นามสกุล" />
+        {errors.name && <div style={err}>{errors.name}</div>}
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <label style={lbl}>ตำแหน่ง *</label>
+        <input style={{ ...inp, borderColor: errors.position ? "#b04060" : "#d4cce0" }} value={form.position} onChange={(e) => set("position", e.target.value)} placeholder="ตำแหน่งงาน" />
+        {errors.position && <div style={err}>{errors.position}</div>}
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <label style={lbl}>ตัวย่อ</label>
+        <input style={inp} value={form.initials} onChange={(e) => set("initials", e.target.value)} maxLength={2} placeholder="2 ตัวอักษร" />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={lbl}>สีประจำตัว</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          {PALETTE.map((c) => (
+            <button key={c} onClick={() => set("color", c)} style={{ width: 28, height: 28, borderRadius: "50%", background: c, border: form.color === c ? "3px solid #5c4f6b" : "3px solid transparent", cursor: "pointer" }} />
+          ))}
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button onClick={onCancel} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid #d4cce0", background: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans, sans-serif", color: "#5c4f6b" }}>ยกเลิก</button>
+        <button onClick={save} style={{ padding: "8px 20px", borderRadius: 10, border: "none", background: "#3d8a56", color: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans, sans-serif" }}>บันทึก</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+function Modal({ title, onClose, children, maxWidth = 560 }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
+      <div style={{ background: "#fff", borderRadius: 18, padding: "28px 28px 24px", width: "100%", maxWidth, maxHeight: "90vh", overflowY: "auto", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h3 style={{ margin: 0, fontFamily: "Playfair Display, serif", fontSize: 18, fontWeight: 500, color: "#1a1118" }}>{title}</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#8b7fa0", lineHeight: 1 }}>×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── Task Detail ──────────────────────────────────────────────────────────────
+function TaskDetail({ task, members, onEdit, onDelete, onClose }) {
+  const s = STATUS_CONFIG[task.status] || {};
+  const p = PRIORITY_CONFIG[task.priority] || {};
+  const tp = TYPE_CONFIG[task.type] || {};
+  const row = { display: "flex", gap: 8, marginBottom: 12, alignItems: "flex-start" };
+  const lbl = { fontSize: 12, color: "#8b7fa0", minWidth: 90, marginTop: 1 };
+  return (
+    <div style={{ fontFamily: "DM Sans, sans-serif" }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+        <Badge label={tp.label} color={tp.color} bg={tp.bg} />
+        <Badge label={s.label} color={s.color} bg={s.bg} />
+        <Badge label={p.label} color={p.color} bg={p.bg} />
+      </div>
+      {task.description && <p style={{ fontSize: 13, color: "#3d3347", marginBottom: 16, lineHeight: 1.6 }}>{task.description}</p>}
+      <div style={row}>
+        <span style={lbl}>ผู้รับผิดชอบ</span>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {task.assignees.map((id) => { const m = getMember(members, id); return m ? <Avatar key={id} member={m} size={24} showName /> : null; })}
+        </div>
+      </div>
+      <div style={row}>
+        <span style={lbl}>วันเริ่ม</span>
+        <span style={{ fontSize: 13 }}>{fmtDate(task.startDate)}</span>
+      </div>
+      <div style={row}>
+        <span style={lbl}>วันครบกำหนด</span>
+        <span style={{ fontSize: 13 }}>{fmtDate(task.dueDate)}</span>
+        {" "}<DueBadge due={task.dueDate} status={task.status} />
+      </div>
+      {task.tags?.length > 0 && (
+        <div style={row}>
+          <span style={lbl}>แท็ก</span>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {task.tags.map((tag) => <span key={tag} style={{ fontSize: 11, background: "#e6deff", color: "#6e52b0", padding: "2px 7px", borderRadius: 20 }}>#{tag}</span>)}
+          </div>
+        </div>
+      )}
+      {task.note && (
+        <div style={{ background: "#fdefc5", borderRadius: 10, padding: "10px 14px", marginTop: 8, fontSize: 13, color: "#6b3800" }}>💡 {task.note}</div>
+      )}
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20, paddingTop: 16, borderTop: "1px solid #e2ddd8" }}>
+        <button onClick={onDelete} style={{ padding: "7px 16px", borderRadius: 10, border: "1px solid #f8a5bc", background: "#fcd9e2", color: "#b04060", cursor: "pointer", fontSize: 12, fontFamily: "DM Sans, sans-serif" }}>ลบ</button>
+        <button onClick={onEdit} style={{ padding: "7px 16px", borderRadius: 10, border: "none", background: "#6e52b0", color: "#fff", cursor: "pointer", fontSize: 12, fontFamily: "DM Sans, sans-serif" }}>แก้ไข</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Kanban Card ──────────────────────────────────────────────────────────────
+function KanbanCard({ task, members, onClick }) {
+  const over = isOverdue(task.dueDate, task.status);
+  const near = isNearDue(task.dueDate);
+  const p = PRIORITY_CONFIG[task.priority] || {};
+  return (
+    <div onClick={onClick} style={{ background: "#fff", borderRadius: 12, padding: "12px 14px", border: `1px solid ${over ? "#f8a5bc" : near ? "#f5b87a" : "#e2ddd8"}`, cursor: "pointer", transition: "all .15s", marginBottom: 8 }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.07)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: "#1a1118", marginBottom: 8, lineHeight: 1.4 }}>{task.title}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: -4 }}>
+          {task.assignees.slice(0, 3).map((id) => { const m = getMember(members, id); return m ? <span key={id} style={{ marginRight: -6 }}><Avatar member={m} size={22} /></span> : null; })}
+          {task.assignees.length > 3 && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#e2ddd8", fontSize: 10, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#8b7fa0" }}>+{task.assignees.length - 3}</span>}
+        </div>
+        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: p.color, display: "inline-block" }} />
+          <DueBadge due={task.dueDate} status={task.status} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+function Dashboard({ tasks, members, onTaskClick, onAddTask }) {
+  const total = tasks.length;
+  const inProg = tasks.filter((t) => t.status === "in_progress").length;
+  const nearDue = tasks.filter((t) => t.status !== "done" && isNearDue(t.dueDate)).length;
+  const doneThisWeek = tasks.filter((t) => t.status === "done" && new Date(t.updatedAt) >= thisWeekStart()).length;
+
+  const statCards = [
+    { label: "งานทั้งหมด", value: total, color: "#6e52b0", bg: "#e6deff" },
+    { label: "กำลังดำเนินการ", value: inProg, color: "#4e78a0", bg: "#deeaf8" },
+    { label: "ใกล้ครบกำหนด", value: nearDue, color: "#b04060", bg: "#fcd9e2" },
+    { label: "เสร็จสัปดาห์นี้", value: doneThisWeek, color: "#3d8a56", bg: "#d4f0df" },
+  ];
+
+  const columns = Object.entries(STATUS_CONFIG).map(([status, cfg]) => ({
+    status, ...cfg, tasks: tasks.filter((t) => t.status === status),
+  }));
+
+  return (
+    <div>
+      {/* Stat cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14, marginBottom: 28 }}>
+        {statCards.map((s) => (
+          <div key={s.label} style={{ background: s.bg, borderRadius: 14, padding: "16px 18px", border: `1px solid ${s.color}33` }}>
+            <div style={{ fontSize: 11, color: s.color, fontWeight: 500, letterSpacing: 0.5, marginBottom: 6 }}>{s.label.toUpperCase()}</div>
+            <div style={{ fontSize: 28, fontWeight: 500, color: s.color, fontFamily: "Playfair Display, serif" }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Kanban */}
+      <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 8 }}>
+        {columns.map((col) => (
+          <div key={col.status} style={{ minWidth: 200, flex: "0 0 200px", background: "#f7f3f0", borderRadius: 14, padding: "14px 12px", border: "1px solid #e2ddd8" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: col.dot, display: "inline-block" }} />
+              <span style={{ fontSize: 12, fontWeight: 500, color: "#3d3347" }}>{col.label}</span>
+              <span style={{ marginLeft: "auto", fontSize: 11, color: "#8b7fa0", background: "#fff", padding: "1px 7px", borderRadius: 20, border: "1px solid #d4cce0" }}>{col.tasks.length}</span>
+            </div>
+            {col.tasks.length === 0 && <div style={{ textAlign: "center", color: "#cbd5e1", fontSize: 12, padding: "20px 0" }}>ว่างอยู่ ✨</div>}
+            {col.tasks.map((t) => <KanbanCard key={t.id} task={t} members={members} onClick={() => onTaskClick(t)} />)}
+          </div>
+        ))}
+      </div>
+
+      {/* Team overview */}
+      <div style={{ marginTop: 28 }}>
+        <h3 style={{ fontFamily: "Playfair Display, serif", fontSize: 16, fontWeight: 500, color: "#1a1118", marginBottom: 14 }}>ภาพรวมทีม</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+          {members.map((m) => {
+            const myTasks = tasks.filter((t) => t.assignees.includes(m.id));
+            const done = myTasks.filter((t) => t.status === "done").length;
+            const pct = myTasks.length ? Math.round((done / myTasks.length) * 100) : 0;
+            return (
+              <div key={m.id} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: "1px solid #e2ddd8" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <Avatar member={m} size={32} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "#1a1118" }}>{m.name}</div>
+                    <div style={{ fontSize: 11, color: "#8b7fa0" }}>{m.position}</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#8b7fa0", marginBottom: 5 }}>
+                  <span>งานทั้งหมด {myTasks.length}</span>
+                  <span>เสร็จ {done} ({pct}%)</span>
+                </div>
+                <div style={{ background: "#e2ddd8", borderRadius: 20, height: 5, overflow: "hidden" }}>
+                  <div style={{ background: m.color, height: "100%", width: `${pct}%`, borderRadius: 20, transition: "width .4s ease" }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Task List ────────────────────────────────────────────────────────────────
+function TaskList({ tasks, members, onTaskClick, onDeleteTask, onEditTask }) {
+  const [search, setSearch] = useState("");
+  const [filterMember, setFilterMember] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterType, setFilterType] = useState("all");
+  const [filterPriority, setFilterPriority] = useState("all");
+  const [sortBy, setSortBy] = useState("dueDate");
+
+  const filtered = tasks
+    .filter((t) => t.title.toLowerCase().includes(search.toLowerCase()))
+    .filter((t) => filterMember === "all" || t.assignees.includes(filterMember))
+    .filter((t) => filterStatus === "all" || t.status === filterStatus)
+    .filter((t) => filterType === "all" || t.type === filterType)
+    .filter((t) => filterPriority === "all" || t.priority === filterPriority)
+    .sort((a, b) => {
+      if (sortBy === "dueDate") return new Date(a.dueDate) - new Date(b.dueDate);
+      if (sortBy === "title") return a.title.localeCompare(b.title, "th");
+      if (sortBy === "status") return a.status.localeCompare(b.status);
+      return 0;
+    });
+
+  const exportCSV = () => {
+    const header = ["ชื่องาน", "ประเภท", "สถานะ", "Priority", "ผู้รับผิดชอบ", "วันครบกำหนด"];
+    const rows = filtered.map((t) => [
+      t.title,
+      TYPE_CONFIG[t.type]?.label || t.type,
+      STATUS_CONFIG[t.status]?.label || t.status,
+      t.priority,
+      t.assignees.map((id) => getMember(members, id)?.name || id).join("; "),
+      t.dueDate,
+    ]);
+    const csv = [header, ...rows].map((r) => r.map((x) => `"${x}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
+    a.download = "tasks.csv";
+    a.click();
+  };
+
+  const selSt = { padding: "7px 10px", borderRadius: 10, border: "1px solid #d4cce0", fontSize: 12, fontFamily: "DM Sans, sans-serif", background: "#f7f3f0", outline: "none", color: "#3d3347" };
+
+  return (
+    <div>
+      {/* Filters */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 ค้นหางาน..." style={{ ...selSt, minWidth: 160, flex: 1 }} />
+        <select style={selSt} value={filterMember} onChange={(e) => setFilterMember(e.target.value)}>
+          <option value="all">ทุกคน</option>
+          {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+        <select style={selSt} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+          <option value="all">ทุกสถานะ</option>
+          {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
+        <select style={selSt} value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+          <option value="all">ทุกประเภท</option>
+          {Object.entries(TYPE_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
+        <select style={selSt} value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+          <option value="all">ทุก Priority</option>
+          {Object.entries(PRIORITY_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
+        <select style={selSt} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <option value="dueDate">เรียงตามวัน</option>
+          <option value="title">เรียงตามชื่อ</option>
+          <option value="status">เรียงตามสถานะ</option>
+        </select>
+        <button onClick={exportCSV} style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid #d4cce0", background: "#fff", cursor: "pointer", fontSize: 12, fontFamily: "DM Sans, sans-serif", color: "#3d3347" }}>⬇ Export CSV</button>
+      </div>
+
+      {filtered.length === 0 && (
+        <div style={{ textAlign: "center", padding: 48, color: "#cbd5e1" }}>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>🌸</div>
+          <div style={{ fontSize: 13 }}>ไม่พบงานที่ตรงเงื่อนไข</div>
+        </div>
+      )}
+
+      {/* Table */}
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, fontFamily: "DM Sans, sans-serif" }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid #e2ddd8" }}>
+              {["ชื่องาน", "ประเภท", "ผู้รับผิดชอบ", "สถานะ", "Priority", "วันครบกำหนด", ""].map((h) => (
+                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, color: "#8b7fa0", fontWeight: 500, letterSpacing: 0.3, whiteSpace: "nowrap" }}>{h.toUpperCase()}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((task) => {
+              const s = STATUS_CONFIG[task.status] || {};
+              const p = PRIORITY_CONFIG[task.priority] || {};
+              const tp = TYPE_CONFIG[task.type] || {};
+              return (
+                <tr key={task.id} style={{ borderBottom: "1px solid #f0ece8", cursor: "pointer" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#f7f3f0"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                  <td style={{ padding: "10px 12px", fontWeight: 500, color: "#1a1118" }} onClick={() => onTaskClick(task)}>{task.title}</td>
+                  <td style={{ padding: "10px 12px" }}><Badge label={tp.label} color={tp.color} bg={tp.bg} /></td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <div style={{ display: "flex", gap: -4 }}>
+                      {task.assignees.slice(0, 3).map((id) => { const m = getMember(members, id); return m ? <span key={id} style={{ marginRight: -5 }}><Avatar member={m} size={22} /></span> : null; })}
+                    </div>
+                  </td>
+                  <td style={{ padding: "10px 12px" }}><Badge label={s.label} color={s.color} bg={s.bg} /></td>
+                  <td style={{ padding: "10px 12px" }}><Badge label={p.label} color={p.color} bg={p.bg} /></td>
+                  <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}><DueBadge due={task.dueDate} status={task.status} /></td>
+                  <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
+                    <button onClick={(e) => { e.stopPropagation(); onEditTask(task); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#6e52b0", fontSize: 13, marginRight: 6 }}>แก้ไข</button>
+                    <button onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#b04060", fontSize: 13 }}>ลบ</button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Members Page ─────────────────────────────────────────────────────────────
+function MembersPage({ members, tasks, onAdd, onEdit, onDelete, onFilterMember }) {
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 18 }}>
+        <button onClick={onAdd} style={{ padding: "9px 18px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #b87ab0, #5a9cc5)", color: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans, sans-serif", fontWeight: 500 }}>+ เพิ่มสมาชิก</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
+        {members.map((m) => {
+          const myTasks = tasks.filter((t) => t.assignees.includes(m.id));
+          const counts = Object.keys(STATUS_CONFIG).reduce((acc, s) => { acc[s] = myTasks.filter((t) => t.status === s).length; return acc; }, {});
+          return (
+            <div key={m.id} style={{ background: "#fff", borderRadius: 16, padding: "20px 18px", border: "1px solid #e2ddd8", transition: "box-shadow .15s" }}
+              onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.06)"}
+              onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                <Avatar member={m} size={44} />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: "#1a1118", cursor: "pointer" }} onClick={() => onFilterMember(m.id)}>{m.name}</div>
+                  <div style={{ fontSize: 12, color: "#8b7fa0" }}>{m.position}</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 12 }}>
+                {Object.entries(STATUS_CONFIG).map(([s, cfg]) => counts[s] > 0 && (
+                  <span key={s} style={{ fontSize: 11, background: cfg.bg, color: cfg.color, padding: "2px 8px", borderRadius: 20 }}>{cfg.label} {counts[s]}</span>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                <button onClick={() => onEdit(m)} style={{ background: "none", border: "1px solid #d4cce0", borderRadius: 8, padding: "4px 12px", cursor: "pointer", fontSize: 12, color: "#5c4f6b", fontFamily: "DM Sans, sans-serif" }}>แก้ไข</button>
+                <button onClick={() => onDelete(m.id)} style={{ background: "none", border: "1px solid #f8a5bc", borderRadius: 8, padding: "4px 12px", cursor: "pointer", fontSize: 12, color: "#b04060", fontFamily: "DM Sans, sans-serif" }}>ลบ</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Settings ────────────────────────────────────────────────────────────────
+function SettingsPage({ settings, dispatch, showToast, onClose }) {
+  const [form, setForm] = useState({ appsScriptUrl: "", sheetId: "", slackUrl: "", lineToken: "", autoSync: false, notifyDays: 3, ...settings });
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const save = () => {
+    dispatch({ type: "UPDATE_SETTINGS", payload: form });
+    showToast("บันทึกการตั้งค่าเรียบร้อย ✓", "success");
+    if (onClose) onClose();
+  };
+
+  const testConnection = async () => {
+    if (!form.appsScriptUrl) { showToast("กรุณากรอก Apps Script URL ก่อน", "error"); return; }
+    try {
+      await fetch(form.appsScriptUrl, { method: "GET" });
+      showToast("เชื่อมต่อสำเร็จ ✓", "success");
+    } catch { showToast("ไม่สามารถเชื่อมต่อได้", "error"); }
+  };
+
+  const inp = { width: "100%", padding: "8px 12px", borderRadius: 10, border: "1px solid #d4cce0", fontSize: 13, fontFamily: "DM Sans, sans-serif", outline: "none", background: "#f7f3f0", boxSizing: "border-box" };
+  const lbl = { display: "block", fontSize: 12, color: "#8b7fa0", marginBottom: 4, fontWeight: 500, letterSpacing: 0.3 };
+  const sec = { marginBottom: 22 };
+  const h = { fontSize: 13, fontWeight: 500, color: "#3d3347", marginBottom: 10, paddingBottom: 6, borderBottom: "1px solid #e2ddd8" };
+
+  return (
+    <div style={{ fontFamily: "DM Sans, sans-serif" }}>
+      <div style={sec}>
+        <div style={h}>🔗 Google Integration</div>
+        <div style={{ marginBottom: 10 }}>
+          <label style={lbl}>Apps Script URL</label>
+          <input style={inp} value={form.appsScriptUrl} onChange={(e) => set("appsScriptUrl", e.target.value)} placeholder="https://script.google.com/..." />
+        </div>
+        <div style={{ marginBottom: 10 }}>
+          <label style={lbl}>Google Sheet ID</label>
+          <input style={inp} value={form.sheetId} onChange={(e) => set("sheetId", e.target.value)} placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" />
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={testConnection} style={{ padding: "7px 14px", borderRadius: 10, border: "1px solid #d4cce0", background: "#fff", cursor: "pointer", fontSize: 12, fontFamily: "DM Sans, sans-serif" }}>Test Connection</button>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#3d3347", cursor: "pointer" }}>
+            <input type="checkbox" checked={form.autoSync} onChange={(e) => set("autoSync", e.target.checked)} style={{ accentColor: "#6e52b0" }} />
+            เปิด Auto Sync
+          </label>
+        </div>
+      </div>
+      <div style={sec}>
+        <div style={h}>🔔 Notification Settings</div>
+        <div style={{ marginBottom: 10 }}>
+          <label style={lbl}>Slack Webhook URL</label>
+          <input style={inp} value={form.slackUrl} onChange={(e) => set("slackUrl", e.target.value)} placeholder="https://hooks.slack.com/..." />
+        </div>
+        <div style={{ marginBottom: 10 }}>
+          <label style={lbl}>Line Notify Token</label>
+          <input style={inp} value={form.lineToken} onChange={(e) => set("lineToken", e.target.value)} placeholder="Line Notify Token" />
+        </div>
+        <div>
+          <label style={lbl}>แจ้งเตือนก่อนครบกำหนด (วัน)</label>
+          <input type="number" style={{ ...inp, width: 80 }} value={form.notifyDays} min={1} max={14} onChange={(e) => set("notifyDays", parseInt(e.target.value) || 3)} />
+        </div>
+      </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 12, borderTop: "1px solid #e2ddd8" }}>
+        {onClose && <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid #d4cce0", background: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans, sans-serif", color: "#5c4f6b" }}>ยกเลิก</button>}
+        <button onClick={save} style={{ padding: "8px 20px", borderRadius: 10, border: "none", background: "#6e52b0", color: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans, sans-serif" }}>บันทึก</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
+function App() {
+  const [state, dispatch] = useReducer(reducer, null, initState);
+  const [page, setPage] = useState("dashboard");
+  const [toasts, setToasts] = useState([]);
+  const [modal, setModal] = useState(null); // { type, data }
+  const [mobileNav, setMobileNav] = useState(false);
+
+  const showToast = useCallback((msg, type = "success") => {
+    const id = uuid();
+    setToasts((t) => [...t, { id, msg, type }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3000);
+  }, []);
+
+  const nearDueCount = state.tasks.filter((t) => t.status !== "done" && isNearDue(t.dueDate)).length;
+
+  const closeModal = () => setModal(null);
+
+  const handleSaveTask = (task) => {
+    if (task.id && state.tasks.find((t) => t.id === task.id)) {
+      dispatch({ type: "UPDATE_TASK", payload: task });
+    } else {
+      dispatch({ type: "ADD_TASK", payload: { ...task, id: task.id || uuid() } });
+    }
+    closeModal();
+  };
+
+  const handleDeleteTask = (id) => {
+    dispatch({ type: "DELETE_TASK", payload: id });
+    showToast("ลบงานเรียบร้อย", "success");
+    closeModal();
+  };
+
+  const handleSaveMember = (m) => {
+    if (m.id && state.members.find((x) => x.id === m.id)) {
+      dispatch({ type: "UPDATE_MEMBER", payload: m });
+    } else {
+      dispatch({ type: "ADD_MEMBER", payload: m });
+    }
+    showToast("บันทึกสมาชิกเรียบร้อย ✓", "success");
+    closeModal();
+  };
+
+  const handleDeleteMember = (id) => {
+    dispatch({ type: "DELETE_MEMBER", payload: id });
+    showToast("ลบสมาชิกเรียบร้อย", "success");
+  };
+
+  const navItems = [
+    { id: "dashboard", label: "Dashboard", icon: "🌸" },
+    { id: "tasks", label: "งานทั้งหมด", icon: "📋" },
+    { id: "add", label: "เพิ่มงาน", icon: "✦" },
+    { id: "members", label: "สมาชิกทีม", icon: "👥" },
+  ];
+
+  const pageTitle = { dashboard: "Dashboard", tasks: "งานทั้งหมด", add: "เพิ่มงาน", members: "สมาชิกทีม" };
+
+  return (
+    <>
+      <style>{`
+        ${fontStyle}
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: #f4f1ee; color: #1a1118; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d4cce0; border-radius: 2px; }
+      `}</style>
+
+      <div style={{ display: "flex", minHeight: "100vh" }}>
+        {/* Sidebar — desktop */}
+        <aside style={{ width: 220, background: "#fff", borderRight: "1px solid #e2ddd8", padding: "28px 16px 24px", flexShrink: 0, display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh" }}>
+          {/* Logo */}
+          <div style={{ marginBottom: 32, paddingLeft: 8 }}>
+            <div style={{ fontFamily: "Playfair Display, serif", fontSize: 20, fontWeight: 500, color: "#1a1118", lineHeight: 1 }}>Team</div>
+            <div style={{ fontFamily: "Playfair Display, serif", fontSize: 20, fontStyle: "italic", color: "#6e52b0", lineHeight: 1 }}>Tracker</div>
+          </div>
+
+          <nav style={{ flex: 1 }}>
+            {navItems.map((item) => {
+              const active = page === item.id || (item.id === "add" && modal?.type === "addTask");
+              return (
+                <button key={item.id} onClick={() => { if (item.id === "add") { setModal({ type: "addTask" }); } else { setPage(item.id); } }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 10, border: "none", background: active ? "#e6deff" : "transparent", color: active ? "#6e52b0" : "#5c4f6b", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans, sans-serif", textAlign: "left", fontWeight: active ? 500 : 400, marginBottom: 2, transition: "all .15s" }}>
+                  <span style={{ fontSize: 15 }}>{item.icon}</span>
+                  {item.label}
+                  {item.id === "dashboard" && nearDueCount > 0 && (
+                    <span style={{ marginLeft: "auto", background: "#b04060", color: "#fff", borderRadius: 20, fontSize: 10, padding: "1px 6px", fontWeight: 500 }}>{nearDueCount}</span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          <button onClick={() => setModal({ type: "settings" })} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 12px", borderRadius: 10, border: "none", background: "transparent", color: "#8b7fa0", cursor: "pointer", fontSize: 12, fontFamily: "DM Sans, sans-serif", textAlign: "left" }}>
+            ⚙️ ตั้งค่า
+          </button>
+        </aside>
+
+        {/* Main */}
+        <main style={{ flex: 1, padding: "28px 28px 48px", minWidth: 0, maxWidth: "calc(100vw - 220px)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+            <h1 style={{ fontFamily: "Playfair Display, serif", fontSize: 22, fontWeight: 500, color: "#1a1118" }}>{pageTitle[page]}</h1>
+            {page === "tasks" && (
+              <button onClick={() => setModal({ type: "addTask" })} style={{ padding: "8px 18px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #b87ab0, #6e52b0)", color: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "DM Sans, sans-serif", fontWeight: 500 }}>+ เพิ่มงาน</button>
+            )}
+          </div>
+
+          {page === "dashboard" && (
+            <Dashboard tasks={state.tasks} members={state.members}
+              onTaskClick={(t) => setModal({ type: "taskDetail", data: t })}
+              onAddTask={() => setModal({ type: "addTask" })} />
+          )}
+          {page === "tasks" && (
+            <TaskList tasks={state.tasks} members={state.members}
+              onTaskClick={(t) => setModal({ type: "taskDetail", data: t })}
+              onDeleteTask={handleDeleteTask}
+              onEditTask={(t) => setModal({ type: "editTask", data: t })} />
+          )}
+          {page === "members" && (
+            <MembersPage members={state.members} tasks={state.tasks}
+              onAdd={() => setModal({ type: "addMember" })}
+              onEdit={(m) => setModal({ type: "editMember", data: m })}
+              onDelete={handleDeleteMember}
+              onFilterMember={(id) => { setPage("tasks"); }} />
+          )}
+        </main>
+      </div>
+
+      {/* Modals */}
+      {modal?.type === "taskDetail" && (
+        <Modal title={modal.data.title} onClose={closeModal}>
+          <TaskDetail task={modal.data} members={state.members}
+            onEdit={() => setModal({ type: "editTask", data: modal.data })}
+            onDelete={() => handleDeleteTask(modal.data.id)}
+            onClose={closeModal} />
+        </Modal>
+      )}
+      {(modal?.type === "addTask" || modal?.type === "editTask") && (
+        <Modal title={modal.type === "addTask" ? "เพิ่มงานใหม่" : "แก้ไขงาน"} onClose={closeModal} maxWidth={580}>
+          <TaskForm task={modal.data} members={state.members} settings={state.settings}
+            onSave={handleSaveTask} onCancel={closeModal} showToast={showToast} />
+        </Modal>
+      )}
+      {(modal?.type === "addMember" || modal?.type === "editMember") && (
+        <Modal title={modal.type === "addMember" ? "เพิ่มสมาชิก" : "แก้ไขข้อมูลสมาชิก"} onClose={closeModal} maxWidth={420}>
+          <MemberForm member={modal.data} onSave={handleSaveMember} onCancel={closeModal} />
+        </Modal>
+      )}
+      {modal?.type === "settings" && (
+        <Modal title="ตั้งค่า" onClose={closeModal} maxWidth={480}>
+          <SettingsPage settings={state.settings} dispatch={dispatch} showToast={showToast} onClose={closeModal} />
+        </Modal>
+      )}
+
+      <Toast toasts={toasts} />
+    </>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
