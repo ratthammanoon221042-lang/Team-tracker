@@ -192,6 +192,9 @@ def parse_para(p, base, numbering=None):
     if spacing_chars:
         # ระยะห่างตัวอักษร (หน่วย 1/20 pt) ที่ใช้มากที่สุดในย่อหน้า
         fmt["charSpacing"] = max(spacing_chars, key=spacing_chars.get)
+    if text and not text.strip():
+        # ย่อหน้าที่มีแต่แท็บ/ช่องว่าง: Word ใช้ความสูงบรรทัดของสไตล์ปกติ (ต่างจากย่อหน้าว่างจริง) -> เก็บไว้ตามต้นฉบับ
+        return {"type": "para", "text": text.replace("\xa0", " "), "fmt": fmt}
     text = "\n".join(line.rstrip() for line in text.split("\n"))
     text = text.replace("\xa0", " ")
     # ตัดช่องว่างท้ายบรรทัดใน runs ให้ตรงกับ text
@@ -275,5 +278,25 @@ def main(daily_path, special_path):
         f.write("window.SAMPLE_BLOCKS = " + json.dumps({"daily": daily, "letter": letter}, ensure_ascii=False, indent=1) + ";\n")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and len(sys.argv) == 3:
     main(sys.argv[1], sys.argv[2])
+
+
+def build_font_metrics():
+    """ความกว้างตัวอักษรของ TH Sarabun (ใช้ตัดบรรทัดให้ตรงกับ Word แทนการวัดจากเบราว์เซอร์ที่ปัดเศษ)"""
+    from fontTools.ttLib import TTFont
+
+    out = {}
+    for key, path in (("r", "fonts/THSarabunNew.ttf"), ("b", "fonts/THSarabunNew-Bold.ttf")):
+        t = TTFont(path)
+        cmap = t.getBestCmap()
+        hm = t["hmtx"].metrics
+        out["upem"] = t["head"].unitsPerEm
+        out[key] = {cp: hm[g][0] for cp, g in cmap.items() if cp < 0x10000}
+    with open("js/font-metrics.js", "w") as f:
+        f.write("// สร้างโดย tools/build_from_samples.py — ความกว้างตัวอักษร (หน่วย font units)\n")
+        f.write("window.FONT_METRICS = " + json.dumps(out, separators=(",", ":")) + ";\n")
+
+
+if __name__ == "__main__" and len(sys.argv) == 2 and sys.argv[1] == "--metrics":
+    build_font_metrics()

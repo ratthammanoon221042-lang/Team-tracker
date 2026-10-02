@@ -1310,7 +1310,7 @@ window.SAMPLE_BLOCKS = {
   },
   {
    "type": "para",
-   "text": "",
+   "text": "      ",
    "fmt": {
     "before": 0,
     "after": 0,
@@ -1974,7 +1974,7 @@ window.SAMPLE_BLOCKS = {
   },
   {
    "type": "para",
-   "text": "",
+   "text": "\t",
    "fmt": {
     "before": 0,
     "after": 0,
@@ -1994,7 +1994,7 @@ window.SAMPLE_BLOCKS = {
   },
   {
    "type": "para",
-   "text": "",
+   "text": "\t",
    "fmt": {
     "before": 0,
     "after": 0,

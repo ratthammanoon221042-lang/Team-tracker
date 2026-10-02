@@ -103,7 +103,7 @@
         const text = d && d.text != null ? d.text : b.text;
         // ใช้รูปแบบรายช่วงข้อความจากต้นฉบับ (ตัวหนา/ระยะห่างตัวอักษร) ถ้ายังไม่ได้แก้ข้อความ
         const runs = b.runs && text === b.text && b.runs.map((x) => x[0]).join('') === b.text ? b.runs.map((x) => [U.fillVars(x[0], vars), x[1], x[2]]) : null;
-        items.push({ k: 'para', text: U.fillVars(text, vars), fmt: b.fmt, runs, src: b.id });
+        items.push({ k: 'para', text: U.fillVars(text, vars), fmt: b.fmt, runs, src: b.id, ws: !!text && !text.trim() });
       } else if (b.type === 'pageBreak') {
         items.push({ k: 'break', src: b.id });
       } else if (b.type === 'photos') {
@@ -119,7 +119,8 @@
         list.forEach((it, i) => items.push({ k: 'incRow', text: U.fillVars(it.text || '', vars), imgs: (it.images || []).filter(Boolean), src: b.id, first: i === 0 }));
       } else if (b.type === 'freeText') {
         const paras = (d.paras || []).filter((p) => p != null);
-        (paras.length ? paras : ['']).forEach((p) => items.push({ k: 'para', text: U.fillVars(p, vars), fmt: b.fmt, src: b.id }));
+        const tight = d.tight || [];
+        (paras.length ? paras : ['']).forEach((p, i) => items.push({ k: 'para', text: U.fillVars(p, vars), fmt: tight[i] ? Object.assign({}, b.fmt, { charSpacing: -4 }) : b.fmt, src: b.id }));
       }
     }
     return items;

@@ -12,6 +12,7 @@
       pageW: 21.0, pageH: 29.7,
       left: 1701, right: 1134, // twips
       bodyTop: 2.8, bodyBottom: 28.22,
+      wsLine: 20.95, // ความสูงบรรทัดที่มีแต่แท็บ/ช่องว่าง (ตามฟอนต์สไตล์ปกติของไฟล์ต้นแบบ) pt
       logo: { x: 8.55, y: 0.03, w: 4.895, h: 2.736 },
       line: { x1: 2.8, x2: 19.29, y: 2.81, w: 1 },
       footer: { size: 12, top: 28.27, center: 11.0, width: 18 },
@@ -20,6 +21,7 @@
       pageW: 21.0, pageH: 29.7,
       left: 1701, right: 1133,
       bodyTop: 3.56, bodyBottom: 27.2,
+      wsLine: 12.8,
       logo: { x: 8.37, y: 0.28, w: 5.336, h: 3.0 },
       line: null,
       footer: { size: 14, top: 28.15, center: 10.95, width: 20 },
@@ -68,6 +70,8 @@
   function measure(text, sizePt, bold) {
     if (!mctx) mctx = document.createElement('canvas').getContext('2d');
     mctx.font = `${bold ? 'bold ' : ''}${sizePt * U.PX_PER_PT}px ${FONT}`;
+    // Word ไม่ใช้ kerning กับข้อความนี้ -> ปิดให้วัดความกว้างตรงกัน
+    if ('fontKerning' in mctx) mctx.fontKerning = 'none';
     return mctx.measureText(text).width;
   }
 
@@ -84,28 +88,47 @@
     return segmenter ? Array.from(segmenter.segment(t), (x) => x.segment) : Array.from(t);
   };
 
+  // ---------- ความกว้างตัวอักษรจากไฟล์ฟอนต์ (หน่วย twips) ----------
+  // ใช้ตัดบรรทัดเองเหมือน Word แทนการให้เบราว์เซอร์ตัด (เบราว์เซอร์ปัดเศษความกว้างต่างกันแต่ละเครื่อง)
+  const FM = window.FONT_METRICS;
+  function graphemeTw(g, bold, sizePt) {
+    const m = FM && (bold ? FM.b : FM.r);
+    let w = 0;
+    for (const ch of g) {
+      const a = m && m[ch.codePointAt(0)];
+      w += a != null ? (a / FM.upem) * sizePt * 20 : (measure(ch, sizePt, bold) / U.PX_PER_PT) * 20;
+    }
+    return w;
+  }
+  let wordSeg = null;
+  const words = (t) => {
+    if (!wordSeg && window.Intl && Intl.Segmenter) wordSeg = new Intl.Segmenter('th', { granularity: 'word' });
+    return wordSeg ? Array.from(wordSeg.segment(t), (x) => x.segment) : t.split(/(\s+)/).filter(Boolean);
+  };
+
   // วาดย่อหน้า (ตาม pPr/rPr ของ Word) — runs: [[ข้อความ, ตัวหนา, ระยะห่างตัวอักษร]]
-  function renderPara(text, fmt, eb, ea, runs) {
+  function renderPara(text, fmt, eb, ea, runs, widthTw = 9072) {
     const f = fmt;
+    const size = f.size || 16;
     const el = U.h('div.wp');
     el.style.paddingTop = px(eb != null ? eb : f.before || 0) + 'px';
     el.style.paddingBottom = px(ea != null ? ea : f.after || 0) + 'px';
     el.style.paddingLeft = px(f.indLeft || 0) + 'px';
-    el.style.fontSize = f.size + 'pt';
+    el.style.fontSize = size + 'pt';
     el.style.lineHeight = lineHeightPx(f) + 'px';
     const justify = f.align === 'thaiDistribute' || f.align === 'both' || f.align === 'distribute';
-    el.style.textAlign = f.align === 'center' ? 'center' : f.align === 'right' ? 'right' : 'left';
+    const align = f.align === 'center' ? 'center' : f.align === 'right' ? 'right' : 'left';
     if (justify) el.dataset.dist = '1';
     const list = runs && runs.length ? runs : [[String(text || ''), !!f.bold, f.charSpacing || 0]];
-    // แบ่งเป็นบรรทัดตาม \n (Shift+Enter ใน Word)
+    // แบ่งเป็นช่วงตาม \n (Shift+Enter ใน Word): แต่ละช่วงเป็นรายการตัวอักษร (grapheme) พร้อมรูปแบบ
     const segs = [[]];
     for (const [t, b, sp] of list) {
       String(t).split('\n').forEach((part, i) => {
         if (i > 0) segs.push([]);
-        if (part) segs[segs.length - 1].push([part, b, sp]);
+        if (part) segs[segs.length - 1].push([part, !!b, sp || 0]);
       });
     }
-    // หาตำแหน่งแท็บถัดไป (วัดจากขอบซ้ายของเนื้อหา, หน่วย twips)
+    const R = widthTw; // ขอบขวาของเนื้อหา (twips จากขอบซ้าย)
     const stops = (f.tabs || []).slice().sort((a, b) => a - b);
     const maxCustom = stops.length ? stops[stops.length - 1] : 0;
     if (f.hanging) stops.push(f.indLeft || 0);
@@ -114,124 +137,121 @@
       if (next == null) { next = (Math.floor(Math.max(x, maxCustom) / 720) + 1) * 720; while (next <= x + 1) next += 720; }
       return next;
     };
-    const span = (t, b, sp) => {
-      const e = U.h('span', t);
-      if (b) e.style.fontWeight = '700';
-      if (sp) e.style.letterSpacing = spPx(sp) + 'px';
-      return e;
-    };
     segs.forEach((pieces, si) => {
-      const s = U.h('div.seg');
+      // แปลงเป็นคำ (จุดที่ตัดบรรทัดได้) -> แต่ละคำเป็นรายการตัวอักษรพร้อมรูปแบบและความกว้าง
+      const plain = pieces.map((p) => p[0]).join('');
+      const props = [];
+      pieces.forEach(([t, b, sp]) => { for (let i = 0; i < t.length; i++) props.push([b, sp]); });
+      const toks = [];
+      let off = 0;
+      for (const w of words(plain)) {
+        if (w === '\t' || w.indexOf('\t') >= 0) {
+          for (const ch of w) { if (ch === '\t') toks.push({ tab: true }); else toks.push({ chars: [mk(ch, off)], space: /\s/.test(ch) }); off += ch.length; }
+          continue;
+        }
+        const chars = [];
+        let o = off;
+        for (const g of graphemes(w)) { chars.push(mk(g, o)); o += g.length; }
+        toks.push({ chars, space: /^\s+$/.test(w) });
+        off += w.length;
+      }
+      function mk(g, o) {
+        const [b, sp] = props[o] || [false, 0];
+        return { g, b, sp, w: graphemeTw(g, b, size) + sp };
+      }
+      // ตัดบรรทัดแบบ Word: ใส่คำจนเกินความกว้าง แล้วขึ้นบรรทัดใหม่ (ช่องว่างท้ายบรรทัดไม่นับ)
       const firstOffsetTw = si === 0 ? (f.firstLine || 0) - (f.hanging || 0) : 0;
-      if (firstOffsetTw) s.style.textIndent = px(firstOffsetTw) + 'px';
-      if (justify && si < segs.length - 1) s.dataset.br = '1';
-      let x = (f.indLeft || 0) + firstOffsetTw;
+      const lines = [];
+      let cur = { x0: (f.indLeft || 0) + firstOffsetTw, items: [] };
+      let x = cur.x0;
+      let hasText = false;
       if (si === 0 && f.numId) {
-        // สัญลักษณ์หัวข้อ (bullet) ตามด้วยแท็บ เหมือน Word
-        s.appendChild(U.h('span.bullet', { style: { width: px(BULLET_TW) + 'px' } }, '•'));
+        cur.items.push({ bullet: true, w: BULLET_TW });
         x += BULLET_TW;
         const nx = nextStop(x);
-        s.appendChild(U.h('span.tab', { style: { width: px(nx - x) + 'px' } }));
+        cur.items.push({ tab: true, w: nx - x });
         x = nx;
       }
-      for (const [t, b, sp] of pieces) {
-        const parts = t.split('\t');
-        parts.forEach((part, pi) => {
-          if (part) {
-            s.appendChild(span(part, b, sp));
-            x += ((measure(part, f.size, b) + graphemes(part).length * spPx(sp)) / U.PX_PER_PT) * 20;
-          }
-          if (pi < parts.length - 1) {
-            const nx = nextStop(x);
-            s.appendChild(U.h('span.tab', { style: { width: px(nx - x) + 'px' } }));
-            x = nx;
-          }
-        });
+      const newLine = () => { lines.push(cur); cur = { x0: f.indLeft || 0, items: [] }; x = cur.x0; hasText = false; };
+      for (const tk of toks) {
+        if (tk.tab) { const nx = nextStop(x); cur.items.push({ tab: true, w: nx - x }); x = nx; continue; }
+        const w = tk.chars.reduce((a, c) => a + c.w, 0);
+        if (!tk.space && hasText && x + w > R + 0.5) newLine();
+        if (!tk.space && !hasText && x + w > R + 0.5 && tk.chars.length > 1) {
+          // คำเดียวยาวเกินบรรทัด -> ตัดตามตัวอักษร
+          for (const c of tk.chars) { if (hasText && x + c.w > R + 0.5) newLine(); cur.items.push(c); x += c.w; hasText = true; }
+          continue;
+        }
+        for (const c of tk.chars) cur.items.push(c);
+        x += w;
+        if (!tk.space) hasText = true;
       }
-      if (!s.childNodes.length) s.textContent = ' ';
-      el.appendChild(s);
+      lines.push(cur);
+      // วาดแต่ละบรรทัด
+      const segEl = U.h('div.seg');
+      lines.forEach((ln, li) => {
+        let items = ln.items;
+        while (items.length && items[items.length - 1].g && /^\s+$/.test(items[items.length - 1].g)) items = items.slice(0, -1);
+        const lineEl = U.h('div.ln', { style: { textAlign: align } });
+        const off2 = ln.x0 - (f.indLeft || 0);
+        if (off2) lineEl.style.marginLeft = px(off2) + 'px';
+        const isLast = si === segs.length - 1 && li === lines.length - 1;
+        if (justify && !isLast) lineEl.dataset.j = '1';
+        let run = null;
+        for (const it of items) {
+          if (it.bullet) { run = null; lineEl.appendChild(U.h('span.bullet', { style: { width: px(it.w) + 'px' } }, '•')); continue; }
+          if (it.tab) { run = null; lineEl.appendChild(U.h('span.tab', { style: { width: px(it.w) + 'px' } })); continue; }
+          if (!run || run.b !== it.b || run.sp !== it.sp) {
+            run = { b: it.b, sp: it.sp, el: U.h('span') };
+            if (it.b) run.el.style.fontWeight = '700';
+            if (it.sp) run.el.style.letterSpacing = spPx(it.sp) + 'px';
+            run.el.dataset.sp = spPx(it.sp);
+            lineEl.appendChild(run.el);
+          }
+          run.el.textContent += it.g;
+        }
+        if (!lineEl.childNodes.length) lineEl.textContent = ' ';
+        segEl.appendChild(lineEl);
+      });
+      el.appendChild(segEl);
     });
     return el;
   }
 
-  // จัดแบบ "กระจายแบบไทย" (thaiDistribute) ของ Word: เพิ่มระยะห่างระหว่างตัวอักษรให้เต็มบรรทัด
-  // (ไม่ใช่ขยายเฉพาะช่องว่าง) — ต้องเรียกหลังจากองค์ประกอบอยู่ในหน้าเว็บแล้ว
+  // จัดแบบ "กระจายแบบไทย" (thaiDistribute) ของ Word: เพิ่ม/ลดระยะห่างระหว่างตัวอักษรให้เต็มบรรทัดพอดี
+  // (บรรทัดถูกตัดไว้แล้วตามความกว้างจริงของฟอนต์) — ต้องเรียกหลังจากองค์ประกอบอยู่ในหน้าเว็บแล้ว
   function distribute(root) {
-    const paras = root.matches && root.matches('.wp[data-dist]') ? [root] : Array.from(root.querySelectorAll('.wp[data-dist]'));
-    for (const p of paras) {
-      const segs = Array.from(p.children).filter((c) => c.classList.contains('seg'));
-      segs.forEach((seg, si) => {
-        const lastSeg = si === segs.length - 1;
-        const segRect = seg.getBoundingClientRect();
-        // เก็บตำแหน่งของทุกตัวอักษร (grapheme) / แท็บ / bullet
-        const units = [];
-        for (const node of Array.from(seg.childNodes)) {
-          if (node.nodeType !== 1) continue;
-          if (node.classList.contains('tab') || node.classList.contains('bullet')) {
-            const r = node.getBoundingClientRect();
-            units.push({ el: node, left: r.left, right: r.right, top: r.top, kind: 'box' });
-            continue;
-          }
-          const tn = node.firstChild;
-          if (!tn) continue;
-          let off = 0;
-          for (const g of graphemes(tn.data)) {
-            const rg = document.createRange();
-            rg.setStart(tn, off);
-            rg.setEnd(tn, off + g.length);
-            off += g.length;
-            const rects = rg.getClientRects();
-            const r = rects.length ? rects[rects.length - 1] : rg.getBoundingClientRect();
-            units.push({ g, src: node, left: r.left, right: r.right, top: r.top, kind: 'ch' });
-          }
-        }
-        if (!units.length) return;
-        // แบ่งเป็นบรรทัดตามตำแหน่งแนวตั้งของตัวอักษร (แท็บ/bullet ไปอยู่บรรทัดเดียวกับตัวอักษรถัดไป)
-        const lh = parseFloat(p.style.lineHeight) || 20;
-        const lines = [];
-        let cur = null;
-        let pendingBoxes = [];
-        for (const u of units) {
-          if (u.kind === 'box') { pendingBoxes.push(u); continue; }
-          if (!cur || u.top > cur.top + lh * 0.5) { cur = { top: u.top, units: [] }; lines.push(cur); }
-          if (pendingBoxes.length) { cur.units.push(...pendingBoxes); pendingBoxes = []; }
-          cur.units.push(u);
-        }
-        if (pendingBoxes.length) {
-          if (!cur) { cur = { top: 0, units: [] }; lines.push(cur); }
-          cur.units.push(...pendingBoxes);
-        }
-        seg.innerHTML = '';
-        seg.style.textIndent = '0';
-        lines.forEach((ln, li) => {
-          // ตัดช่องว่างท้ายบรรทัด (Word ไม่นับ)
-          let us = ln.units;
-          while (us.length && us[us.length - 1].kind === 'ch' && /^\s+$/.test(us[us.length - 1].g)) us = us.slice(0, -1);
-          const lineEl = U.h('div.ln');
-          if (!us.length) { lineEl.textContent = ' '; seg.appendChild(lineEl); return; }
-          const startX = us[0].left - segRect.left;
-          if (Math.abs(startX) > 0.3) lineEl.style.marginLeft = startX + 'px';
-          const natural = us[us.length - 1].right - us[0].left;
-          const avail = segRect.right - us[0].left;
-          const isLast = lastSeg && li === lines.length - 1;
-          const chars = us.filter((u) => u.kind === 'ch').length;
-          const extra = !isLast && chars > 1 ? Math.max(0, (avail - natural) / (chars - 1)) : 0;
-          // สร้างบรรทัดใหม่: รวมตัวอักษรที่มาจาก span เดียวกันเข้าด้วยกัน
-          let run = null;
-          for (const u of us) {
-            if (u.kind === 'box') { run = null; lineEl.appendChild(u.el); continue; }
-            if (!run || run.src !== u.src) {
-              run = { src: u.src, el: U.h('span') };
-              if (u.src.style.fontWeight) run.el.style.fontWeight = u.src.style.fontWeight;
-              const base = parseFloat(u.src.style.letterSpacing) || 0;
-              run.el.style.letterSpacing = base + extra + 'px';
-              lineEl.appendChild(run.el);
-            }
-            run.el.textContent += u.g;
-          }
-          seg.appendChild(lineEl);
-        });
-      });
+    const lines = root.matches && root.matches('.ln[data-j]') ? [root] : Array.from(root.querySelectorAll('.ln[data-j]'));
+    // ขอบขวาจริงของตัวอักษรสุดท้ายในบรรทัด (Range ของทั้งบรรทัดวัดข้อความไทยที่มีระยะตัวอักษรได้ไม่ถูกต้อง)
+    const lastRight = (spans) => {
+      const s = spans[spans.length - 1];
+      const tn = s && s.firstChild;
+      if (!tn) return null;
+      const gs = graphemes(tn.data);
+      const last = gs[gs.length - 1];
+      const rg = document.createRange();
+      rg.setStart(tn, tn.length - last.length);
+      rg.setEnd(tn, tn.length);
+      const rects = rg.getClientRects();
+      const r = rects.length ? rects[rects.length - 1] : rg.getBoundingClientRect();
+      // ไม่นับระยะตัวอักษรท้ายสุด (เพิ่มหลังตัวสุดท้าย)
+      return r.right - (parseFloat(s.style.letterSpacing) || 0);
+    };
+    for (const ln of lines) {
+      const spans = Array.from(ln.children).filter((c) => !c.classList.contains('tab') && !c.classList.contains('bullet') && c.firstChild);
+      const n = spans.reduce((a, s) => a + graphemes(s.textContent).length, 0);
+      if (n < 2) continue;
+      const box = ln.getBoundingClientRect();
+      let extra = 0;
+      // 2 รอบ: รอบแรกคำนวณ รอบสองแก้ส่วนต่างที่เหลือ
+      for (let pass = 0; pass < 2; pass++) {
+        const end = lastRight(spans);
+        if (end == null) break;
+        const diff = box.right - end;
+        if (Math.abs(diff) < 0.3) break;
+        extra += diff / (n - 1);
+        for (const s of spans) s.style.letterSpacing = (Number(s.dataset.sp) || 0) + extra + 'px';
+      }
     }
   }
   Layout.distribute = distribute;
@@ -256,7 +276,10 @@
   function renderItem(it, ctx) {
     const { imgs, base } = ctx;
     if (it.html) return htmlToEl(it.html);
-    if (it.k === 'para') return renderPara(it.text, it.fmt, it.eb, it.ea, it.runs);
+    if (it.k === 'para') {
+      const f = it.ws ? Object.assign({}, it.fmt, { lineRule: 'exact', line: Math.round(BASES[base].wsLine * 20) }) : it.fmt;
+      return renderPara(it.text, f, it.eb, it.ea, it.runs, BASES[base].contentTw);
+    }
     if (it.k === 'photoRow') {
       const g = GEO.photo;
       const row = U.h('div.trow.photo' + (it.first ? '.first' : ''), { style: { marginLeft: px(g.ind) + 'px', height: px(g.rowH) + 'px' } });
@@ -266,7 +289,7 @@
     if (it.k === 'incRow') {
       const g = GEO.inc;
       const row = U.h('div.trow.incrow' + (it.first ? '.first' : ''), { style: { marginLeft: px(g.ind) + 'px' } });
-      const c1 = U.h('div.tcell', { style: { width: px(g.cols[0]) + 'px', padding: `0 ${px(GEO.cellMar)}px` } }, renderPara(it.text, g.textFmt));
+      const c1 = U.h('div.tcell', { style: { width: px(g.cols[0]) + 'px', padding: `0 ${px(GEO.cellMar)}px` } }, renderPara(it.text, g.textFmt, null, null, null, g.cols[0] - 2 * GEO.cellMar));
       const c2 = U.h('div.tcell.imgs', { style: { width: px(g.cols[1]) + 'px' } });
       it.imgs.forEach((id) => c2.appendChild(U.h('div.incimg', imgBox(id, imgs, g.imgW, g.imgH, false))));
       row.append(c1, c2);
@@ -328,7 +351,7 @@
       host.appendChild(el);
       distribute(el);
       // เก็บผลการจัดบรรทัดไว้ใช้ตอนวาดหน้าจริง (ตัดบรรทัดเหมือนกันทุกครั้ง)
-      if (el.querySelector('.wp[data-dist]') || el.matches('.wp[data-dist]')) it.html = el.outerHTML;
+      if (el.querySelector('.ln[data-j]') || el.matches('.ln[data-j]')) it.html = el.outerHTML;
       const r = el.getBoundingClientRect().height;
       host.removeChild(el);
       return r;

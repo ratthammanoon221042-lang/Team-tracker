@@ -187,7 +187,7 @@ ol.steps { padding-left: 1.3rem; } ol.steps li { margin-bottom: .45rem; }
 .page .hline { position: absolute; border-top: 1px solid #000; height: 0; }
 .page .footer { position: absolute; text-align: center; font-weight: 700; font-style: italic; white-space: nowrap; }
 .page .pbody { position: absolute; }
-.wp { padding-right: 1px; color: #000; word-break: normal; overflow-wrap: break-word; line-break: auto; }
+.wp { color: #000; word-break: normal; overflow-wrap: break-word; line-break: auto; }
 .wp .seg { white-space: pre-wrap; }
 .wp .ln { white-space: pre; }
 .wp .tab, .wp .bullet { display: inline-block; text-indent: 0; }

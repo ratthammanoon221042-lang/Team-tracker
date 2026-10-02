@@ -197,15 +197,26 @@
       function freeTextEditor(b, d) {
         const box = h('div.blk');
         const list = h('div.stack');
+        // d.tight[i] = บีบระยะตัวอักษร -0.2pt (แบบที่ใช้ในไฟล์ต้นแบบเพื่อให้คำพอดีบรรทัด)
+        const swap = (i, j) => {
+          d.tight = d.tight || [];
+          [d.paras[i], d.paras[j]] = [d.paras[j], d.paras[i]];
+          [d.tight[i], d.tight[j]] = [d.tight[j], d.tight[i]];
+          touch(); paint();
+        };
         const paint = () => {
           list.innerHTML = '';
+          d.tight = d.tight || [];
           d.paras.forEach((p, i) => {
             const ta = h('textarea.input.doc', { rows: 3 }, p);
             ta.addEventListener('input', () => { d.paras[i] = ta.value; touch(); });
+            const tight = h('label.check.small', { title: 'ลดระยะห่างตัวอักษร 0.2 pt ให้ข้อความชิดขึ้น (ช่วยให้คำท้ายบรรทัดไม่ตกไปบรรทัดใหม่)' },
+              h('input', { type: 'checkbox', checked: !!d.tight[i], on: { change: (e) => { d.tight[i] = e.target.checked; touch(); } } }), 'ตัวอักษรชิด');
             list.appendChild(h('div', h('div.row.between', h('span.muted.small', `ย่อหน้าที่ ${i + 1}`), h('div.row',
-              h('button.icon-btn', { title: 'เลื่อนขึ้น', on: { click: () => { if (i > 0) { [d.paras[i - 1], d.paras[i]] = [d.paras[i], d.paras[i - 1]]; touch(); paint(); } } } }, '↑'),
-              h('button.icon-btn', { title: 'เลื่อนลง', on: { click: () => { if (i < d.paras.length - 1) { [d.paras[i + 1], d.paras[i]] = [d.paras[i], d.paras[i + 1]]; touch(); paint(); } } } }, '↓'),
-              h('button.icon-btn', { title: 'ลบย่อหน้า', on: { click: () => { d.paras.splice(i, 1); touch(); paint(); } } }, '🗑'))), ta));
+              tight,
+              h('button.icon-btn', { title: 'เลื่อนขึ้น', on: { click: () => { if (i > 0) swap(i - 1, i); } } }, '↑'),
+              h('button.icon-btn', { title: 'เลื่อนลง', on: { click: () => { if (i < d.paras.length - 1) swap(i, i + 1); } } }, '↓'),
+              h('button.icon-btn', { title: 'ลบย่อหน้า', on: { click: () => { d.paras.splice(i, 1); d.tight.splice(i, 1); touch(); paint(); } } }, '🗑'))), ta));
           });
         };
         paint();

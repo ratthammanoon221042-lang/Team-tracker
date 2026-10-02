@@ -45,13 +45,15 @@
           out.push({
             type: 'freeText',
             label: 'รายละเอียดเหตุการณ์ (ลำดับเวลา)',
-            fmt: U.clone(src[8].fmt),
+            fmt: Object.assign(U.clone(src[9].fmt), { charSpacing: 0 }),
             defaultItems: ['เมื่อวันที่ {วันที่} เวลาประมาณ 00.00 น. '],
           });
         }
         return;
       }
       if (b.type === 'para' && b.text === 'ภาพประกอบ') b.fmt.keepNext = true;
+      // "จึงเรียนมาเพื่อโปรดทราบ" ถึงชื่อผู้ลงนาม: ให้อยู่หน้าเดียวกันเสมอ (ไม่ให้ตำแหน่งแยกไปอีกหน้า)
+      if (b.type === 'para' && i >= 12 && i <= 16) b.fmt.keepNext = true;
       out.push(b);
     });
     return numberIds(out);
@@ -83,7 +85,7 @@
     // สร้างเทมเพลตเริ่มต้นในฐานข้อมูล ถ้ายังไม่มี
     async ensure() {
       // เวอร์ชันของค่าเริ่มต้น: ถ้าเพิ่มขึ้น เทมเพลตที่ยังไม่เคยแก้ไขจะถูกแทนด้วยค่าใหม่
-      const VERSION = 2;
+      const VERSION = 3;
       const ver = (await DB.getMeta('defaultsVersion')) || 1;
       for (const id of TEMPLATE_IDS) {
         let t = await DB.get('templates', id);
