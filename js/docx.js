@@ -10,31 +10,34 @@
   const REL_FTR = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer';
   const LIST_STYLE = '<w:style w:type="paragraph" w:styleId="a7"><w:name w:val="List Paragraph"/><w:basedOn w:val="a"/><w:uiPriority w:val="34"/><w:qFormat/><w:pPr><w:ind w:left="720"/><w:contextualSpacing/></w:pPr></w:style>';
 
-  function rPr(size, bold) {
+  function rPr(size, bold, sp) {
     const sz = Math.round(size * 2);
-    return `<w:rPr><w:rFonts w:ascii="${FONT}" w:hAnsi="${FONT}" w:cs="${FONT}"/>${bold ? '<w:b/><w:bCs/>' : ''}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr>`;
+    return `<w:rPr><w:rFonts w:ascii="${FONT}" w:hAnsi="${FONT}" w:cs="${FONT}"/>${bold ? '<w:b/><w:bCs/>' : ''}${sp ? `<w:spacing w:val="${sp}"/>` : ''}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr>`;
   }
 
-  function runs(text, size, bold) {
-    if (!text) return '';
+  // list: [[ข้อความ, ตัวหนา, ระยะห่างตัวอักษร]]
+  function runs(list, size) {
     let out = '';
-    const rp = rPr(size, bold);
-    const lines = String(text).split('\n');
-    lines.forEach((line, li) => {
-      if (li > 0) out += `<w:r>${rp}<w:br/></w:r>`;
-      line.split('\t').forEach((part, pi) => {
-        if (pi > 0) out += `<w:r>${rp}<w:tab/></w:r>`;
-        if (part) out += `<w:r>${rp}<w:t xml:space="preserve">${X(part)}</w:t></w:r>`;
+    for (const [text, bold, sp] of list) {
+      if (!text) continue;
+      const rp = rPr(size, bold, sp);
+      String(text).split('\n').forEach((line, li) => {
+        if (li > 0) out += `<w:r>${rp}<w:br/></w:r>`;
+        line.split('\t').forEach((part, pi) => {
+          if (pi > 0) out += `<w:r>${rp}<w:tab/></w:r>`;
+          if (part) out += `<w:r>${rp}<w:t xml:space="preserve">${X(part)}</w:t></w:r>`;
+        });
       });
-    });
+    }
     return out;
   }
 
-  function pPr(f, { keepNext = false, pageBreak = false } = {}) {
+  function pPr(f, { keepNext = false, pageBreak = false, numbering = true } = {}) {
     let s = '<w:pPr>';
     if (f.list) s += '<w:pStyle w:val="a7"/>';
     if (keepNext) s += '<w:keepNext/>';
     if (pageBreak) s += '<w:pageBreakBefore/>';
+    if (f.numId && numbering) s += `<w:numPr><w:ilvl w:val="${f.ilvl || 0}"/><w:numId w:val="${f.numId}"/></w:numPr>`;
     if (f.tabs && f.tabs.length) s += '<w:tabs>' + f.tabs.map((t) => `<w:tab w:val="left" w:pos="${t}"/>`).join('') + '</w:tabs>';
     s += `<w:spacing w:before="${f.before || 0}" w:after="${f.after || 0}" w:line="${f.line || 240}" w:lineRule="${f.lineRule || 'auto'}"/>`;
     const ind = [];
@@ -44,11 +47,17 @@
     else if (f.list) ind.push('w:firstLine="0"');
     s += `<w:ind ${ind.join(' ')}/>`;
     s += `<w:jc w:val="${f.align === 'thaiDistribute' ? 'thaiDistribute' : f.align === 'both' ? 'both' : f.align || 'left'}"/>`;
-    s += rPr(f.size || 16, f.bold) + '</w:pPr>';
+    s += rPr(f.size || 16, f.bold, f.charSpacing) + '</w:pPr>';
     return s;
   }
 
-  const para = (text, f, opts) => `<w:p>${pPr(f, opts)}${runs(text, f.size || 16, f.bold)}</w:p>`;
+  // ย่อหน้า: ถ้าไฟล์โครงไม่มีรายการสัญลักษณ์ (numbering) ให้ใส่ • + แท็บเป็นข้อความแทน
+  const para = (text, f, opts = {}, rl = null) => {
+    const list = rl || [[text, !!f.bold, f.charSpacing || 0]];
+    let pre = '';
+    if (f.numId && opts.numbering === false) pre = `<w:r>${rPr(f.size || 16, false)}<w:sym w:font="Symbol" w:char="F0B7"/></w:r><w:r>${rPr(f.size || 16, false)}<w:tab/></w:r>`;
+    return `<w:p>${pPr(f, opts)}${pre}${runs(list, f.size || 16)}</w:p>`;
+  };
   // ย่อหน้าสูง 1pt สำหรับขึ้นหน้าใหม่ก่อนตาราง / ตัวแบ่งส่วน / ปิดท้ายเอกสาร
   const tinyPara = ({ pageBreak = false, sectPr = '' } = {}) => `<w:p><w:pPr>${pageBreak ? '<w:pageBreakBefore/>' : ''}<w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/><w:rPr><w:sz w:val="2"/><w:szCs w:val="2"/></w:rPr>${sectPr}</w:pPr></w:p>`;
 
@@ -129,7 +138,7 @@
       while (i < items.length) {
         const it = items[i];
         if (it.k === 'para') {
-          s += para(it.text, it.fmt, { keepNext: keep[i], pageBreak: needBreak });
+          s += para(it.text, it.fmt, { keepNext: keep[i], pageBreak: needBreak, numbering: this.numbering }, it.runs);
           needBreak = false;
           i++;
           continue;
@@ -172,6 +181,7 @@
     const mainBase = docs[0].base;
     const zip = await JSZip.loadAsync(U.base64ToBytes(window.SKELETONS[mainBase]));
     const b = new Builder();
+    b.numbering = !!zip.file('word/numbering.xml');
     let docXml = await zip.file('word/document.xml').async('string');
     let rels = await zip.file('word/_rels/document.xml.rels').async('string');
     let ct = await zip.file('[Content_Types].xml').async('string');

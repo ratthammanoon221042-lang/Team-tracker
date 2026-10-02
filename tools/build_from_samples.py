@@ -84,42 +84,97 @@ def attr(xml, tag, name):
     return m.group(1) if m else None
 
 
-def parse_para(p, base):
+def numbering_ind(numbering, num_id, ilvl):
+    """ระยะย่อหน้าที่กำหนดในรายการสัญลักษณ์ (numbering.xml) ของ numId/ilvl"""
+    if not numbering or num_id is None:
+        return {}
+    m = re.search(r'<w:num w:numId="%s"[^>]*>\s*<w:abstractNumId w:val="(\d+)"/>' % num_id, numbering)
+    if not m:
+        return {}
+    a = re.search(r'<w:abstractNum [^>]*w:abstractNumId="%s".*?</w:abstractNum>' % m.group(1), numbering, re.S)
+    lvl = re.search(r'<w:lvl w:ilvl="%s".*?</w:lvl>' % ilvl, a.group(0), re.S) if a else None
+    ind = re.search(r"<w:ind [^>]*/>", lvl.group(0)) if lvl else None
+    out = {}
+    if ind:
+        for k in ("left", "hanging", "firstLine"):
+            v = re.search(r'w:%s="(-?\d+)"' % k, ind.group(0))
+            if v:
+                out[k] = int(v.group(1))
+    return out
+
+
+def parse_para(p, base, numbering=None):
     ppr = re.search(r"<w:pPr>(.*?)</w:pPr>", p, re.S)
     ppr = ppr.group(1) if ppr else ""
     ppr = re.sub(r"<w:rPr>.*?</w:rPr>", "", ppr, flags=re.S)
     d_after, d_line = W_SPACING_DEFAULT[base]
     is_list = 'w:pStyle w:val="a7"' in ppr
+    num = re.search(r'<w:numPr><w:ilvl w:val="(\d+)"/><w:numId w:val="(\d+)"/></w:numPr>', ppr)
+    # ลำดับความสำคัญของระยะย่อหน้า: สไตล์ -> รายการสัญลักษณ์ -> ค่าในย่อหน้า
+    ind = {"left": 720 if is_list else 0, "hanging": 0, "firstLine": 0}
+    if num:
+        nind = numbering_ind(numbering, num.group(2), num.group(1))
+        if nind:
+            ind.update({"hanging": 0, "firstLine": 0})
+            ind.update(nind)
+    direct = re.search(r"<w:ind [^>]*/>", ppr)
+    if direct:
+        for k in ("left", "hanging", "firstLine"):
+            v = re.search(r'w:%s="(-?\d+)"' % k, direct.group(0))
+            if v:
+                if k in ("hanging", "firstLine"):
+                    ind["hanging"] = ind["firstLine"] = 0
+                ind[k] = int(v.group(1))
     fmt = {
         "before": int(attr(ppr, "spacing", "before") or 0),
         "after": int(attr(ppr, "spacing", "after") or d_after),
         "line": int(attr(ppr, "spacing", "line") or d_line),
         "align": attr(ppr, "jc", "val") or "left",
-        "indLeft": int(attr(ppr, "ind", "left") or (720 if is_list else 0)),
-        "hanging": int(attr(ppr, "ind", "hanging") or 0),
-        "firstLine": int(attr(ppr, "ind", "firstLine") or 0),
+        "indLeft": ind["left"],
+        "hanging": ind["hanging"],
+        "firstLine": ind["firstLine"],
         "tabs": [int(x) for x in re.findall(r'<w:tab w:val="left" w:pos="(\d+)"/>', ppr)],
         "list": is_list,
         "bold": False,
         "size": 16,
+        "charSpacing": 0,
     }
+    if num:
+        fmt["numId"] = int(num.group(2))
+        fmt["ilvl"] = int(num.group(1))
     text = ""
     bold_chars = 0
     plain_chars = 0
     sizes = []
+    spacing_chars = {}
+    runs = []  # รูปแบบแต่ละช่วงข้อความตามต้นฉบับ [ข้อความ, ตัวหนา, ระยะห่างตัวอักษร]
+
+    def add_run(t, b, sp):
+        if runs and runs[-1][1] == b and runs[-1][2] == sp:
+            runs[-1][0] += t
+        else:
+            runs.append([t, b, sp])
+
     for r in re.findall(r"<w:r[ >].*?</w:r>", p, re.S):
         rpr = re.search(r"<w:rPr>(.*?)</w:rPr>", r, re.S)
         rpr = rpr.group(1) if rpr else ""
+        sp = re.search(r'<w:spacing w:val="(-?\d+)"', rpr)
+        spv = int(sp.group(1)) if sp else 0
+        bold = "<w:b/>" in rpr
         for tok in re.finditer(r"<w:t(?: [^>]*)?>([^<]*)</w:t>|<w:tab/>|<w:br/>", r):
             s = tok.group(0)
             if s == "<w:tab/>":
                 text += "\t"
+                add_run("\t", bold, spv)
             elif s == "<w:br/>":
                 text += "\n"
+                add_run("\n", bold, spv)
             else:
-                t = tok.group(1)
+                t = tok.group(1).replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
                 text += t
+                add_run(t, bold, spv)
                 n = len(t.strip())
+                spacing_chars[spv] = spacing_chars.get(spv, 0) + n
                 if "<w:b/>" in rpr:
                     bold_chars += n
                 else:
@@ -134,13 +189,51 @@ def parse_para(p, base):
     if sizes:
         fmt["size"] = max(set(sizes), key=sizes.count) / 2
     fmt["bold"] = bold_chars > plain_chars
+    if spacing_chars:
+        # ระยะห่างตัวอักษร (หน่วย 1/20 pt) ที่ใช้มากที่สุดในย่อหน้า
+        fmt["charSpacing"] = max(spacing_chars, key=spacing_chars.get)
     text = "\n".join(line.rstrip() for line in text.split("\n"))
     text = text.replace("\xa0", " ")
-    return {"type": "para", "text": text, "fmt": fmt}
+    # ตัดช่องว่างท้ายบรรทัดใน runs ให้ตรงกับ text
+    joined = "".join(r[0] for r in runs).replace("\xa0", " ")
+    out = {"type": "para", "text": text, "fmt": fmt}
+    trimmed = []
+    for r in runs:
+        trimmed.append([r[0].replace("\xa0", " "), r[1], r[2]])
+    # ลบช่องว่างก่อน \n และท้ายย่อหน้า
+    flat = []
+    for t, b, sp in trimmed:
+        for ch in t:
+            flat.append([ch, b, sp])
+    res = []
+    i = 0
+    while i < len(flat):
+        ch = flat[i][0]
+        if ch == " ":
+            j = i
+            while j < len(flat) and flat[j][0] == " ":
+                j += 1
+            if j == len(flat) or flat[j][0] == "\n":
+                i = j
+                continue
+        res.append(flat[i])
+        i += 1
+    merged = []
+    for ch, b, sp in res:
+        if merged and merged[-1][1] == b and merged[-1][2] == sp:
+            merged[-1][0] += ch
+        else:
+            merged.append([ch, b, sp])
+    if "".join(m[0] for m in merged) == text and len(merged) > 0 and any(m[2] for m in merged) or len(set((m[1]) for m in merged)) > 1:
+        if "".join(m[0] for m in merged) == text:
+            out["runs"] = merged
+    return out
 
 
 def parse_body(path, base):
-    x = zipfile.ZipFile(path).read("word/document.xml").decode("utf8")
+    z = zipfile.ZipFile(path)
+    x = z.read("word/document.xml").decode("utf8")
+    numbering = z.read("word/numbering.xml").decode("utf8") if "word/numbering.xml" in z.namelist() else ""
     body = x.split("<w:body>", 1)[1]
     blocks = []
     pos = 0
@@ -164,7 +257,7 @@ def parse_body(path, base):
             if "<w:drawing>" in p and base == "letter":
                 blocks.append({"type": "photoGrid", "slots": len(re.findall(r"<a:blip ", p))})
             else:
-                blocks.append(parse_para(p, base))
+                blocks.append(parse_para(p, base, numbering))
             pos = end
     return blocks
 

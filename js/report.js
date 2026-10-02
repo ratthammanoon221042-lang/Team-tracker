@@ -101,7 +101,9 @@
       const d = (r.data && r.data[b.id]) || initData(b) || {};
       if (b.type === 'para') {
         const text = d && d.text != null ? d.text : b.text;
-        items.push({ k: 'para', text: U.fillVars(text, vars), fmt: b.fmt, src: b.id });
+        // ใช้รูปแบบรายช่วงข้อความจากต้นฉบับ (ตัวหนา/ระยะห่างตัวอักษร) ถ้ายังไม่ได้แก้ข้อความ
+        const runs = b.runs && text === b.text && b.runs.map((x) => x[0]).join('') === b.text ? b.runs.map((x) => [U.fillVars(x[0], vars), x[1], x[2]]) : null;
+        items.push({ k: 'para', text: U.fillVars(text, vars), fmt: b.fmt, runs, src: b.id });
       } else if (b.type === 'pageBreak') {
         items.push({ k: 'break', src: b.id });
       } else if (b.type === 'photos') {

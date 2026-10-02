@@ -187,10 +187,12 @@ ol.steps { padding-left: 1.3rem; } ol.steps li { margin-bottom: .45rem; }
 .page .hline { position: absolute; border-top: 1px solid #000; height: 0; }
 .page .footer { position: absolute; text-align: center; font-weight: 700; font-style: italic; white-space: nowrap; }
 .page .pbody { position: absolute; }
-.wp { color: #000; word-break: normal; overflow-wrap: break-word; line-break: auto; }
+.wp { padding-right: 1px; color: #000; word-break: normal; overflow-wrap: break-word; line-break: auto; }
 .wp .seg { white-space: pre-wrap; }
-.wp .tab { display: inline-block; }
-.trow { display: flex; border: .5pt solid #000; }
+.wp .ln { white-space: pre; }
+.wp .tab, .wp .bullet { display: inline-block; text-indent: 0; }
+.wp .bullet { font-family: Arial, "Liberation Sans", sans-serif; font-weight: 400; }
+.trow { display: flex; width: max-content; border: .5pt solid #000; }
 .trow:not(.first) { border-top: 0; }
 .trow .tcell { display: flex; align-items: center; justify-content: center; flex: none; }
 .trow .tcell + .tcell { border-left: .5pt solid #000; }
@@ -246,4 +248,3 @@ ol.steps { padding-left: 1.3rem; } ol.steps li { margin-bottom: .45rem; }
   #print-area .page { page-break-after: always; break-after: page; }
   #print-area .page:last-child { page-break-after: auto; break-after: auto; }
 }
-.wp.dist { text-justify: inter-character; }

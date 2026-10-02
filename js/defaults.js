@@ -18,7 +18,8 @@
       if (i === 0) b.text = 'รายงานผลการปฏิบัติงาน วันที่ {วันที่}';
       // ย่อหน้าว่างจำนวนมากหลังหัวข้อ 5 ในต้นแบบ ใช้ดันผลัดกลางคืนไปขึ้นหน้าใหม่ -> ใช้ตัวแบ่งหน้าแทน
       if (i >= 29 && i <= 57) {
-        if (i === 29) out.push({ type: 'pageBreak' });
+        // ในต้นแบบ ย่อหน้าว่างบรรทัดสุดท้ายล้นไปอยู่บนสุดของหน้าผลัดกลางคืน -> คงไว้ 1 บรรทัด
+        if (i === 29) out.push({ type: 'pageBreak' }, U.clone(src[57]));
         continue;
       }
       if (b.type === 'incidents') b.emptyText = 'ไม่มีเหตุการณ์ผิดปกติ';
@@ -81,11 +82,16 @@
     makeTemplate,
     // สร้างเทมเพลตเริ่มต้นในฐานข้อมูล ถ้ายังไม่มี
     async ensure() {
+      // เวอร์ชันของค่าเริ่มต้น: ถ้าเพิ่มขึ้น เทมเพลตที่ยังไม่เคยแก้ไขจะถูกแทนด้วยค่าใหม่
+      const VERSION = 2;
+      const ver = (await DB.getMeta('defaultsVersion')) || 1;
       for (const id of TEMPLATE_IDS) {
-        const t = await DB.get('templates', id);
+        let t = await DB.get('templates', id);
+        if (t && !t.deleted && (t.updatedAt || 0) <= 1 && ver < VERSION) t = null;
         // updatedAt = 1 เพื่อให้เทมเพลตที่ตั้งค่าไว้บนคลาวด์ (ถ้ามี) ชนะเสมอเมื่อซิงก์
         if (!t || t.deleted) await DB.put('templates', Object.assign(makeTemplate(id), { updatedAt: 1 }), { keepTime: true, silent: true });
       }
+      await DB.setMeta('defaultsVersion', VERSION);
     },
     // รูปแบบย่อหน้าสำเร็จรูป (ค่าจากไฟล์ต้นแบบ)
     PRESETS: {
@@ -93,8 +99,8 @@
       shift: { label: 'หัวข้อผลัด (ตัวหนา)', fmt: { before: 0, after: 0, line: 240, align: 'thaiDistribute', indLeft: 0, hanging: 0, firstLine: 0, tabs: [2977], list: false, bold: true, size: 16 } },
       summary: { label: 'ย่อหน้าสรุป (ย่อบรรทัดแรก)', fmt: { before: 0, after: 120, line: 216, align: 'thaiDistribute', indLeft: 0, hanging: 0, firstLine: 0, tabs: [1134, 2977], list: false, bold: false, size: 16 } },
       section: { label: 'หัวข้อย่อย 1. 2. 3. (ตัวหนา)', fmt: { before: 120, after: 0, line: 240, align: 'left', indLeft: 0, hanging: 0, firstLine: 0, tabs: [], list: false, bold: true, size: 16 } },
-      sub: { label: 'บรรทัดช่วงเวลา (ย่อหน้า)', fmt: { before: 0, after: 0, line: 216, align: 'thaiDistribute', indLeft: 1066, hanging: 357, firstLine: 0, tabs: [], list: true, bold: false, size: 16 } },
-      body: { label: 'เนื้อหาใต้หัวข้อ (ย่อหน้า)', fmt: { before: 0, after: 120, line: 216, align: 'thaiDistribute', indLeft: 1066, hanging: 357, firstLine: 0, tabs: [], list: true, bold: false, size: 16 } },
+      sub: { label: 'บรรทัดช่วงเวลา (มีสัญลักษณ์ •)', fmt: { before: 0, after: 0, line: 216, align: 'thaiDistribute', indLeft: 1066, hanging: 357, firstLine: 0, tabs: [], list: true, bold: false, size: 16, numId: 7, ilvl: 0, charSpacing: 0 } },
+      body: { label: 'เนื้อหาใต้หัวข้อ (มีสัญลักษณ์ •)', fmt: { before: 0, after: 120, line: 216, align: 'thaiDistribute', indLeft: 1066, hanging: 357, firstLine: 0, tabs: [], list: true, bold: false, size: 16, numId: 7, ilvl: 0, charSpacing: 0 } },
       blank: { label: 'บรรทัดว่าง', fmt: { before: 0, after: 0, line: 240, align: 'left', indLeft: 0, hanging: 0, firstLine: 0, tabs: [], list: false, bold: false, size: 16 } },
       letterPara: { label: 'ย่อหน้าหนังสือ (ย่อบรรทัดแรก)', fmt: { before: 0, after: 0, line: 240, align: 'thaiDistribute', indLeft: 0, hanging: 0, firstLine: 720, tabs: [], list: false, bold: false, size: 16 } },
       letterLine: { label: 'บรรทัดหนังสือ (ชิดซ้าย)', fmt: { before: 0, after: 0, line: 240, align: 'left', indLeft: 0, hanging: 0, firstLine: 0, tabs: [], list: false, bold: false, size: 16 } },

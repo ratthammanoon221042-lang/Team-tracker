@@ -40,6 +40,7 @@
       const preview = UI.previewPane(() => sampleReport(t), { placeholder: true, zoomKey: 'dr-zoom-tpl' });
       const refreshPreview = U.debounce(() => preview.refresh(), 450);
       const changed = (repaint = false) => { setDirty(true); refreshPreview(); if (repaint) paintBlocks(); };
+      const outerChanged = changed;
 
       const tabs = h('div.tabs', Defaults.TEMPLATE_IDS.map((id) => h('button' + (id === tid ? '.active' : ''), {
         on: {
@@ -97,6 +98,8 @@
 
       function fmtEditor(b) {
         const f = b.fmt;
+        // แก้รูปแบบเอง -> เลิกใช้รูปแบบรายช่วงจากต้นฉบับ
+        const changed = (r) => { delete b.runs; outerChanged(r); };
         const num = (label, get, set, step = 0.1) => h('label.field', h('span', label), h('input.input', { type: 'number', step, value: get(), on: { input: (e) => { set(Number(e.target.value)); changed(); } } }));
         const alignSel = h('select.input', ALIGNS.map(([v, l]) => h('option', { value: v }, l)));
         alignSel.value = f.align || 'left';
@@ -114,6 +117,8 @@
             num('บรรทัดแรกเยื้องเข้า (ซม.)', () => cmOf(f.firstLine), (v) => { f.firstLine = twOf(v); if (f.firstLine) f.hanging = 0; }),
             num('ย่อหน้าแขวน (ซม.)', () => cmOf(f.hanging), (v) => { f.hanging = twOf(v); if (f.hanging) f.firstLine = 0; }),
             h('label.field', h('span', 'แท็บ (ซม. คั่นด้วย ,)'), tabsInp),
+            h('label.check', h('input', { type: 'checkbox', checked: !!f.numId, on: { change: (e) => { if (e.target.checked) { f.numId = 7; f.ilvl = 0; if (!f.hanging) { f.hanging = 357; f.firstLine = 0; } if (!f.indLeft) f.indLeft = 1066; } else delete f.numId; changed(); } } }), 'สัญลักษณ์หัวข้อ •'),
+            num('ระยะห่างตัวอักษร (pt, ติดลบ = ชิดขึ้น)', () => (f.charSpacing || 0) / 20, (v) => { f.charSpacing = Math.round(v * 20); }, 0.05),
             h('label.check', { title: 'สไตล์ List Paragraph ของไฟล์ต้นแบบ: ย่อหน้าแบบนี้ที่ติดกันจะไม่เว้นระยะห่าง' }, h('input', { type: 'checkbox', checked: !!f.list, on: { change: (e) => { f.list = e.target.checked; changed(); } } }), 'สไตล์รายการ (List Paragraph)'),
             h('label.check', h('input', { type: 'checkbox', checked: !!f.keepNext, on: { change: (e) => { f.keepNext = e.target.checked; changed(); } } }), 'อยู่หน้าเดียวกับย่อหน้าถัดไป')));
       }

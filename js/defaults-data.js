@@ -15,7 +15,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": true,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -34,7 +35,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": true,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -54,7 +56,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -79,7 +82,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": true,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -91,7 +95,7 @@ window.SAMPLE_BLOCKS = {
     "line": 216,
     "align": "thaiDistribute",
     "indLeft": 720,
-    "hanging": 0,
+    "hanging": 360,
     "firstLine": 0,
     "tabs": [
      4536,
@@ -99,8 +103,23 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": 0,
+    "numId": 5,
+    "ilvl": 0
+   },
+   "runs": [
+    [
+     "ช่วงเช้า เวลา 07:00 - 09:00 น. เจ้าหน้าที่รักษาความปลอดภัยประจำจุด",
+     false,
+     -4
+    ],
+    [
+     "อำนวยความสะดวกการจราจรแก่ผู้บริหาร เจ้าหน้าที่ และผู้มาติดต่อ มีรถเข้าอย่างต่อเนื่อง สภาพการจราจรคล่องตัวดี\n เหตุการณ์โดยรวมปกติ",
+     false,
+     0
+    ]
+   ]
   },
   {
    "type": "para",
@@ -119,8 +138,23 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": 0,
+    "numId": 5,
+    "ilvl": 0
+   },
+   "runs": [
+    [
+     "ช่วงเย็น เวลา 16:00 - 18:00 น. เจ้าหน้าที่รักษาความปลอดภัยประจำจุด",
+     false,
+     -4
+    ],
+    [
+     "อำนวยความสะดวกการจราจรแก่ผู้บริหาร เจ้าหน้าที่ และผู้มาติดต่อ มีรถออกอย่างต่อเนื่อง สภาพการจราจรคล่องตัวดี\nเหตุการณ์โดยรวมปกติ",
+     false,
+     0
+    ]
+   ]
   },
   {
    "type": "photos",
@@ -140,7 +174,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": true,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -157,7 +192,10 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0,
+    "numId": 1,
+    "ilvl": 0
    }
   },
   {
@@ -174,7 +212,10 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0,
+    "numId": 1,
+    "ilvl": 0
    }
   },
   {
@@ -197,7 +238,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -216,8 +258,21 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": true,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": 0
+   },
+   "runs": [
+    [
+     " ",
+     false,
+     0
+    ],
+    [
+     "3. พื้นที่ลานจอดรถ",
+     true,
+     0
+    ]
+   ]
   },
   {
    "type": "para",
@@ -238,8 +293,23 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": -6,
+    "numId": 14,
+    "ilvl": 0
+   },
+   "runs": [
+    [
+     " ลานจอดรถ ชั้น B1 ช่วงเวลา 07:00 - 19:00 น",
+     false,
+     -6
+    ],
+    [
+     ".",
+     false,
+     0
+    ]
+   ]
   },
   {
    "type": "para",
@@ -257,7 +327,10 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0,
+    "numId": 7,
+    "ilvl": 0
    }
   },
   {
@@ -280,8 +353,23 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": -6,
+    "numId": 7,
+    "ilvl": 0
+   },
+   "runs": [
+    [
+     "ลานจอดรถ ชั้น B2 ช่วงเวลา 07:00 - 19:00 น",
+     false,
+     -6
+    ],
+    [
+     ".",
+     false,
+     0
+    ]
+   ]
   },
   {
    "type": "para",
@@ -299,7 +387,10 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0,
+    "numId": 7,
+    "ilvl": 0
    }
   },
   {
@@ -324,7 +415,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": true,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -343,8 +435,23 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": -6,
+    "numId": 7,
+    "ilvl": 0
+   },
+   "runs": [
+    [
+     "ช่วงเวลา 07:00 - 19:00 น",
+     false,
+     -6
+    ],
+    [
+     ".",
+     false,
+     0
+    ]
+   ]
   },
   {
    "type": "para",
@@ -362,7 +469,10 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0,
+    "numId": 7,
+    "ilvl": 0
    }
   },
   {
@@ -385,7 +495,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -404,7 +515,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -423,7 +535,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -440,7 +553,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": true,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -462,7 +576,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -481,7 +596,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -500,7 +616,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -519,7 +636,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -538,7 +656,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -557,7 +676,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -576,7 +696,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -595,7 +716,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -614,7 +736,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -633,7 +756,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -652,7 +776,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -671,7 +796,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -690,7 +816,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -709,7 +836,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -728,7 +856,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -747,7 +876,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -766,7 +896,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -785,7 +916,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -804,7 +936,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -823,7 +956,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -842,7 +976,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -861,7 +996,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -880,7 +1016,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -899,7 +1036,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -918,7 +1056,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -937,7 +1076,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -956,7 +1096,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -975,7 +1116,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -994,7 +1136,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1013,7 +1156,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": true,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1033,7 +1177,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1058,7 +1203,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": true,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1078,8 +1224,23 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": 0,
+    "numId": 5,
+    "ilvl": 0
+   },
+   "runs": [
+    [
+     "ช่วงเวลา 19:00 - 07:00 น. เจ้าหน้าที่รักษาความปลอดภัยประจำจุด",
+     false,
+     -4
+    ],
+    [
+     " ตรวจสอบยานพาหนะที่เข้า - ออกอำนวยความสะดวกการจราจรแก่ผู้บริหาร เจ้าหน้าที่ และผู้มาติดต่อ มีรถเข้า – ออกเป็นระยะเหตุการณ์โดยรวมปกติ",
+     false,
+     0
+    ]
+   ]
   },
   {
    "type": "photos",
@@ -1099,7 +1260,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": true,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1116,7 +1278,10 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0,
+    "numId": 1,
+    "ilvl": 0
    }
   },
   {
@@ -1133,7 +1298,10 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0,
+    "numId": 1,
+    "ilvl": 0
    }
   },
   {
@@ -1156,7 +1324,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1175,7 +1344,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1194,7 +1364,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1213,7 +1384,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1232,7 +1404,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1253,7 +1426,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": true,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1275,8 +1449,28 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": -6,
+    "numId": 14,
+    "ilvl": 0
+   },
+   "runs": [
+    [
+     " ลานจอดรถ ชั้น B1 ",
+     false,
+     0
+    ],
+    [
+     "ช่วงเวลา 19:00 - 07:00 น",
+     false,
+     -6
+    ],
+    [
+     ".",
+     false,
+     0
+    ]
+   ]
   },
   {
    "type": "para",
@@ -1294,7 +1488,10 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0,
+    "numId": 7,
+    "ilvl": 0
    }
   },
   {
@@ -1317,8 +1514,23 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": -6,
+    "numId": 7,
+    "ilvl": 0
+   },
+   "runs": [
+    [
+     "ลานจอดรถ ชั้น B2 ช่วงเวลา 19:00 - 07:00 น",
+     false,
+     -6
+    ],
+    [
+     ".",
+     false,
+     0
+    ]
+   ]
   },
   {
    "type": "para",
@@ -1336,7 +1548,10 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0,
+    "numId": 7,
+    "ilvl": 0
    }
   },
   {
@@ -1361,7 +1576,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": true,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1380,8 +1596,23 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": -6,
+    "numId": 7,
+    "ilvl": 0
+   },
+   "runs": [
+    [
+     "ช่วงเวลา 19:00 - 07:00 น",
+     false,
+     -6
+    ],
+    [
+     ".",
+     false,
+     0
+    ]
+   ]
   },
   {
    "type": "para",
@@ -1399,7 +1630,10 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": true,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0,
+    "numId": 7,
+    "ilvl": 0
    }
   },
   {
@@ -1420,7 +1654,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   }
  ],
@@ -1439,7 +1674,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1456,7 +1692,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1473,7 +1710,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1490,8 +1728,21 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": -4
+   },
+   "runs": [
+    [
+     "เรียน\t",
+     false,
+     0
+    ],
+    [
+     "ประธานคณะกรรมการตรวจรับพัสดุ งานจ้างบริการรักษาความปลอดภัย โครงการพื้นที่ส่วนขยายโซนซี",
+     false,
+     -4
+    ]
+   ]
   },
   {
    "type": "para",
@@ -1507,7 +1758,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1524,7 +1776,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1541,7 +1794,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1558,8 +1812,21 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": 0
+   },
+   "runs": [
+    [
+     "เมื่อวันที่ 15 ธันวาคม 2568 เวลาประมาณ 08.43 น. ได้รับรายงานจากเจ้าหน้าที่รักษาความปลอดภัย ",
+     false,
+     -4
+    ],
+    [
+     "บริษัท รักษาความปลอดภัยและบริหารธุรการ สยาม จำกัด แจ้งว่าเกิดอุบัติเหตุรถจักรยานยนต์ล้ม บริเวณถนนด้านหน้า Core Lift E1 ลานจอดรถ ชั้น B1 อาคารสำนักงานกระทรวงดิจิทัลเพื่อเศรษฐกิจและสังคม",
+     false,
+     0
+    ]
+   ]
   },
   {
    "type": "para",
@@ -1575,8 +1842,31 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": -4
+   },
+   "runs": [
+    [
+     "เวลา 08.44 น. เจ้าหน้าที่รักษาความปลอดภัยได้เข้าตรวจสอบพื้นที่เกิดเหตุ พบผู้บาดเจ็บจำนวน 1 ราย ",
+     false,
+     -4
+    ],
+    [
+     "เป็นพนักงานจัดส่งสินค้า (เดลิเวอรี่) ของร้านสะดวกซื้อเซเว่นอีเลฟเว่น จึงได้ดำเนินการให้ความช่วยเหลือ",
+     false,
+     0
+    ],
+    [
+     "เบื้องต้นและสอบถามอาการ ทราบว่าผู้บาดเจ็บมีอาการเจ็บบริเวณขาด้านซ้าย ไม่สามารถขยับได้ สาเหตุเบื้องต้น",
+     false,
+     -4
+    ],
+    [
+     "เกิดจากมีน้ำท่วมขังบริเวณทางเข้าลานจอดรถ ชั้น B1 ส่งผลให้พื้นถนนบริเวณดังกล่าวมีความลื่น",
+     false,
+     0
+    ]
+   ]
   },
   {
    "type": "para",
@@ -1592,7 +1882,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1609,7 +1900,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1626,8 +1918,21 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
-   }
+    "size": 16.0,
+    "charSpacing": -4
+   },
+   "runs": [
+    [
+     "เวลา 09.01 น. เจ้าหน้าที่รักษาความปลอดภัยได้อำนวยความสะดวกให้รถฉุกเฉินเคลื่อนตัวออกจากพื้นที่ ",
+     false,
+     -4
+    ],
+    [
+     "เพื่อนำตัวผู้บาดเจ็บส่งโรงพยาบาลเป็นที่เรียบร้อยแล้ว",
+     false,
+     0
+    ]
+   ]
   },
   {
    "type": "para",
@@ -1643,7 +1948,8 @@ window.SAMPLE_BLOCKS = {
     "tabs": [],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1662,7 +1968,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1681,7 +1988,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1700,7 +2008,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1719,7 +2028,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1738,7 +2048,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": false,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {
@@ -1757,7 +2068,8 @@ window.SAMPLE_BLOCKS = {
     ],
     "list": false,
     "bold": true,
-    "size": 16.0
+    "size": 16.0,
+    "charSpacing": 0
    }
   },
   {

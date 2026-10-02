@@ -19,8 +19,8 @@
     letter: {
       pageW: 21.0, pageH: 29.7,
       left: 1701, right: 1133,
-      bodyTop: 3.75, bodyBottom: 27.2,
-      logo: { x: 8.37, y: 0.5, w: 5.336, h: 3.0 },
+      bodyTop: 3.56, bodyBottom: 27.2,
+      logo: { x: 8.37, y: 0.28, w: 5.336, h: 3.0 },
       line: null,
       footer: { size: 14, top: 28.15, center: 10.95, width: 20 },
     },
@@ -76,55 +76,165 @@
     return fmt.size * U.PX_PER_PT * LINE_FACTOR * ((fmt.line || 240) / 240);
   }
 
-  // วาดย่อหน้า (ตาม pPr ของ Word)
-  function renderPara(text, fmt, eb, ea) {
+  const BULLET_TW = 147; // ความกว้างสัญลักษณ์ • (Symbol) ที่ 16pt
+  const spPx = (sp) => ((sp || 0) / 20) * U.PX_PER_PT; // ระยะห่างตัวอักษร (1/20 pt) -> px
+  let segmenter = null;
+  const graphemes = (t) => {
+    if (!segmenter && window.Intl && Intl.Segmenter) segmenter = new Intl.Segmenter('th', { granularity: 'grapheme' });
+    return segmenter ? Array.from(segmenter.segment(t), (x) => x.segment) : Array.from(t);
+  };
+
+  // วาดย่อหน้า (ตาม pPr/rPr ของ Word) — runs: [[ข้อความ, ตัวหนา, ระยะห่างตัวอักษร]]
+  function renderPara(text, fmt, eb, ea, runs) {
     const f = fmt;
     const el = U.h('div.wp');
     el.style.paddingTop = px(eb != null ? eb : f.before || 0) + 'px';
     el.style.paddingBottom = px(ea != null ? ea : f.after || 0) + 'px';
     el.style.paddingLeft = px(f.indLeft || 0) + 'px';
     el.style.fontSize = f.size + 'pt';
-    el.style.fontWeight = f.bold ? '700' : '400';
     el.style.lineHeight = lineHeightPx(f) + 'px';
     const justify = f.align === 'thaiDistribute' || f.align === 'both' || f.align === 'distribute';
-    el.style.textAlign = justify ? 'justify' : f.align === 'center' ? 'center' : f.align === 'right' ? 'right' : 'left';
-    if (justify && f.align !== 'both') el.classList.add('dist');
-    const segs = String(text || '').split('\n');
-    segs.forEach((seg, si) => {
+    el.style.textAlign = f.align === 'center' ? 'center' : f.align === 'right' ? 'right' : 'left';
+    if (justify) el.dataset.dist = '1';
+    const list = runs && runs.length ? runs : [[String(text || ''), !!f.bold, f.charSpacing || 0]];
+    // แบ่งเป็นบรรทัดตาม \n (Shift+Enter ใน Word)
+    const segs = [[]];
+    for (const [t, b, sp] of list) {
+      String(t).split('\n').forEach((part, i) => {
+        if (i > 0) segs.push([]);
+        if (part) segs[segs.length - 1].push([part, b, sp]);
+      });
+    }
+    // หาตำแหน่งแท็บถัดไป (วัดจากขอบซ้ายของเนื้อหา, หน่วย twips)
+    const stops = (f.tabs || []).slice().sort((a, b) => a - b);
+    const maxCustom = stops.length ? stops[stops.length - 1] : 0;
+    if (f.hanging) stops.push(f.indLeft || 0);
+    const nextStop = (x) => {
+      let next = stops.filter((t) => t > x + 1).sort((a, b) => a - b)[0];
+      if (next == null) { next = (Math.floor(Math.max(x, maxCustom) / 720) + 1) * 720; while (next <= x + 1) next += 720; }
+      return next;
+    };
+    const span = (t, b, sp) => {
+      const e = U.h('span', t);
+      if (b) e.style.fontWeight = '700';
+      if (sp) e.style.letterSpacing = spPx(sp) + 'px';
+      return e;
+    };
+    segs.forEach((pieces, si) => {
       const s = U.h('div.seg');
       const firstOffsetTw = si === 0 ? (f.firstLine || 0) - (f.hanging || 0) : 0;
       if (firstOffsetTw) s.style.textIndent = px(firstOffsetTw) + 'px';
-      if (justify && si < segs.length - 1) s.style.textAlignLast = 'justify';
-      if (seg.indexOf('\t') >= 0) {
-        // คำนวณแท็บ: ตำแหน่งวัดจากขอบซ้ายของเนื้อหา
-        const stops = (f.tabs || []).slice().sort((a, b) => a - b);
-        const maxCustom = stops.length ? stops[stops.length - 1] : 0;
-        if (f.hanging) stops.push(f.indLeft || 0);
-        let x = (f.indLeft || 0) + firstOffsetTw; // twips
-        const parts = seg.split('\t');
+      if (justify && si < segs.length - 1) s.dataset.br = '1';
+      let x = (f.indLeft || 0) + firstOffsetTw;
+      if (si === 0 && f.numId) {
+        // สัญลักษณ์หัวข้อ (bullet) ตามด้วยแท็บ เหมือน Word
+        s.appendChild(U.h('span.bullet', { style: { width: px(BULLET_TW) + 'px' } }, '•'));
+        x += BULLET_TW;
+        const nx = nextStop(x);
+        s.appendChild(U.h('span.tab', { style: { width: px(nx - x) + 'px' } }));
+        x = nx;
+      }
+      for (const [t, b, sp] of pieces) {
+        const parts = t.split('\t');
         parts.forEach((part, pi) => {
-          if (part) s.appendChild(document.createTextNode(part));
-          x += (measure(part, f.size, f.bold) / U.PX_PER_PT) * 20;
+          if (part) {
+            s.appendChild(span(part, b, sp));
+            x += ((measure(part, f.size, b) + graphemes(part).length * spPx(sp)) / U.PX_PER_PT) * 20;
+          }
           if (pi < parts.length - 1) {
-            // แท็บที่กำหนดเอง (+ ตำแหน่งย่อหน้าแขวน) ก่อน แล้วจึงแท็บเริ่มต้นทุก 1.27 ซม. ที่อยู่ถัดจากแท็บที่กำหนดเอง
-            let next = stops.filter((t) => t > x + 1).sort((a, b) => a - b)[0];
-            if (next == null) {
-              next = (Math.floor(Math.max(x, maxCustom) / 720) + 1) * 720;
-              while (next <= x + 1) next += 720;
-            }
-            const w = px(next - x);
-            s.appendChild(U.h('span.tab', { style: { width: w + 'px' } }));
-            x = next;
+            const nx = nextStop(x);
+            s.appendChild(U.h('span.tab', { style: { width: px(nx - x) + 'px' } }));
+            x = nx;
           }
         });
-      } else {
-        s.textContent = seg || ' ';
       }
-      if (!seg) s.textContent = ' ';
+      if (!s.childNodes.length) s.textContent = ' ';
       el.appendChild(s);
     });
     return el;
   }
+
+  // จัดแบบ "กระจายแบบไทย" (thaiDistribute) ของ Word: เพิ่มระยะห่างระหว่างตัวอักษรให้เต็มบรรทัด
+  // (ไม่ใช่ขยายเฉพาะช่องว่าง) — ต้องเรียกหลังจากองค์ประกอบอยู่ในหน้าเว็บแล้ว
+  function distribute(root) {
+    const paras = root.matches && root.matches('.wp[data-dist]') ? [root] : Array.from(root.querySelectorAll('.wp[data-dist]'));
+    for (const p of paras) {
+      const segs = Array.from(p.children).filter((c) => c.classList.contains('seg'));
+      segs.forEach((seg, si) => {
+        const lastSeg = si === segs.length - 1;
+        const segRect = seg.getBoundingClientRect();
+        // เก็บตำแหน่งของทุกตัวอักษร (grapheme) / แท็บ / bullet
+        const units = [];
+        for (const node of Array.from(seg.childNodes)) {
+          if (node.nodeType !== 1) continue;
+          if (node.classList.contains('tab') || node.classList.contains('bullet')) {
+            const r = node.getBoundingClientRect();
+            units.push({ el: node, left: r.left, right: r.right, top: r.top, kind: 'box' });
+            continue;
+          }
+          const tn = node.firstChild;
+          if (!tn) continue;
+          let off = 0;
+          for (const g of graphemes(tn.data)) {
+            const rg = document.createRange();
+            rg.setStart(tn, off);
+            rg.setEnd(tn, off + g.length);
+            off += g.length;
+            const rects = rg.getClientRects();
+            const r = rects.length ? rects[rects.length - 1] : rg.getBoundingClientRect();
+            units.push({ g, src: node, left: r.left, right: r.right, top: r.top, kind: 'ch' });
+          }
+        }
+        if (!units.length) return;
+        // แบ่งเป็นบรรทัดตามตำแหน่งแนวตั้งของตัวอักษร (แท็บ/bullet ไปอยู่บรรทัดเดียวกับตัวอักษรถัดไป)
+        const lh = parseFloat(p.style.lineHeight) || 20;
+        const lines = [];
+        let cur = null;
+        let pendingBoxes = [];
+        for (const u of units) {
+          if (u.kind === 'box') { pendingBoxes.push(u); continue; }
+          if (!cur || u.top > cur.top + lh * 0.5) { cur = { top: u.top, units: [] }; lines.push(cur); }
+          if (pendingBoxes.length) { cur.units.push(...pendingBoxes); pendingBoxes = []; }
+          cur.units.push(u);
+        }
+        if (pendingBoxes.length) {
+          if (!cur) { cur = { top: 0, units: [] }; lines.push(cur); }
+          cur.units.push(...pendingBoxes);
+        }
+        seg.innerHTML = '';
+        seg.style.textIndent = '0';
+        lines.forEach((ln, li) => {
+          // ตัดช่องว่างท้ายบรรทัด (Word ไม่นับ)
+          let us = ln.units;
+          while (us.length && us[us.length - 1].kind === 'ch' && /^\s+$/.test(us[us.length - 1].g)) us = us.slice(0, -1);
+          const lineEl = U.h('div.ln');
+          if (!us.length) { lineEl.textContent = ' '; seg.appendChild(lineEl); return; }
+          const startX = us[0].left - segRect.left;
+          if (Math.abs(startX) > 0.3) lineEl.style.marginLeft = startX + 'px';
+          const natural = us[us.length - 1].right - us[0].left;
+          const avail = segRect.right - us[0].left;
+          const isLast = lastSeg && li === lines.length - 1;
+          const chars = us.filter((u) => u.kind === 'ch').length;
+          const extra = !isLast && chars > 1 ? Math.max(0, (avail - natural) / (chars - 1)) : 0;
+          // สร้างบรรทัดใหม่: รวมตัวอักษรที่มาจาก span เดียวกันเข้าด้วยกัน
+          let run = null;
+          for (const u of us) {
+            if (u.kind === 'box') { run = null; lineEl.appendChild(u.el); continue; }
+            if (!run || run.src !== u.src) {
+              run = { src: u.src, el: U.h('span') };
+              if (u.src.style.fontWeight) run.el.style.fontWeight = u.src.style.fontWeight;
+              const base = parseFloat(u.src.style.letterSpacing) || 0;
+              run.el.style.letterSpacing = base + extra + 'px';
+              lineEl.appendChild(run.el);
+            }
+            run.el.textContent += u.g;
+          }
+          seg.appendChild(lineEl);
+        });
+      });
+    }
+  }
+  Layout.distribute = distribute;
 
   function imgBox(id, imgs, wcm, hcm, placeholder) {
     const box = U.h('div.imgbox', { style: { width: cm(wcm) + 'px', height: cm(hcm) + 'px' } });
@@ -136,10 +246,17 @@
     return box;
   }
 
+  function htmlToEl(html) {
+    const t = document.createElement('template');
+    t.innerHTML = html;
+    return t.content.firstElementChild;
+  }
+
   // วาดแต่ละองค์ประกอบเป็น DOM
   function renderItem(it, ctx) {
     const { imgs, base } = ctx;
-    if (it.k === 'para') return renderPara(it.text, it.fmt, it.eb, it.ea);
+    if (it.html) return htmlToEl(it.html);
+    if (it.k === 'para') return renderPara(it.text, it.fmt, it.eb, it.ea, it.runs);
     if (it.k === 'photoRow') {
       const g = GEO.photo;
       const row = U.h('div.trow.photo' + (it.first ? '.first' : ''), { style: { marginLeft: px(g.ind) + 'px', height: px(g.rowH) + 'px' } });
@@ -206,8 +323,12 @@
     const ctx = { imgs, base };
     const hs = items.map((it) => {
       if (it.k === 'break') return 0;
+      delete it.html;
       const el = renderItem(it, ctx);
       host.appendChild(el);
+      distribute(el);
+      // เก็บผลการจัดบรรทัดไว้ใช้ตอนวาดหน้าจริง (ตัดบรรทัดเหมือนกันทุกครั้ง)
+      if (el.querySelector('.wp[data-dist]') || el.matches('.wp[data-dist]')) it.html = el.outerHTML;
       const r = el.getBoundingClientRect().height;
       host.removeChild(el);
       return r;
@@ -254,7 +375,6 @@
     el.appendChild(ft);
     const body = U.h('div.pbody', { style: { left: px(B.left) + 'px', top: cm(B.bodyTop) + 'px', width: px(B.contentTw) + 'px' } });
     const items = page.items;
-    applyContextual(items);
     const ctx = { imgs, base };
     items.forEach((it) => body.appendChild(renderItem(it, ctx)));
     el.appendChild(body);
